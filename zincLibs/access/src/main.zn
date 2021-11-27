@@ -1,0 +1,51 @@
+//!
+//! The 'access' contract entry.
+//! https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol
+
+pub type Address = u160;
+
+contract Access {
+pub _owner: Address;
+
+    pub fn new() -> Self {
+        Self {
+	        _owner: zksync::msg.sender,
+        }
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    pub fn owner(self) -> Address {
+        self._owner
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    fn onlyOwner(self) {
+        require(zksync::msg.sender == self._owner, "Ownable: caller is not the owner");
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` fns anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any fnality that is only available to the owner.
+     */
+    pub fn renounceOwnership(mut self) {
+        self._owner = 0 as Address;
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    pub fn transferOwnership(mut self, newOwner: Address) {
+    	self.onlyOwner();
+
+        require(newOwner != 0 as Address, "Ownable: new owner is the zero address");
+        self._owner = newOwner;
+    }
+}

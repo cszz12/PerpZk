@@ -1,0 +1,42 @@
+{
+  "type": "contract",
+  "storages": {
+    "0x0000000000000000000000000000000000000000": [
+      "0x0",
+      [],
+      [],
+      [],
+      "0"
+    ]
+  },
+  "msg": {
+    "sender": "0x0000000000000000000000000000000000000000",
+    "recipient": "0x0000000000000000000000000000000000000000",
+    "token_address": "0x0000000000000000000000000000000000000000",
+    "amount": "0"
+  },
+  "arguments": {
+    "transferFrom": {
+      "sender": "0x0",
+      "recipient": "0x0",
+      "amount": "0"
+    },
+    "_mint": {
+      "account": "0x0",
+      "amount": "0"
+    },
+    "decreaseAllowance": {
+      "spender": "0x0",
+      "subtractedValue": "0"
+    },
+    "balanceOf": {
+      "account": "0x0"
+    },
+    "increaseAllowance": {
+      "spender": "0x0",
+      "addedValue": "0"
+    },
+    "new": {},
+    "totalSupply": {}
+  }
+}

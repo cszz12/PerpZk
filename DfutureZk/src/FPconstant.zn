@@ -1,0 +1,52 @@
+// constants for FuturePerpetual
+pub const PrecisionDecimals6: u248 = 1E6; // u248(10**6);       // USDT precision
+pub const PrecisionDecimals18: u248 = 1E18; // u248(10**18);      // LpToken precision
+pub const MAX_ENOUGH_MARGIN: u248 = 1E10; // u248(10000*10**6); // magic number for infinity
+
+// ---------- External Address--------------
+pub const UsdtAddress: u8 = 11; // usdt ERC20 Address
+pub const LpTokenWrapperAddress: u8 = 12; // LPTokenWrapper contract Address
+pub const FPOracleAddress: u8 = 13; // Oracle Address
+pub const DTokenAddress: u8 = 14; // D-Token Address
+pub const LiquidPoolAddress: u8 = 15; // LPContract Address
+pub const DesignatedPositionCloser: u8 = 16; // Designated postiion closer Address
+pub const ReservedClaimer: u8 = 17; // Address who can claim reserved reward
+
+// Can't open position if below this margin ratio
+pub const MaintainMarginRatio: u8 = 22;
+
+// Liquidation threshold
+pub const ForceCloseMarginRatio: u8 = 23;
+
+// Fixed slippage ratio, only for closing position
+pub const SlippageRatio: u8 = 24;
+
+// LP exit penality ratio
+pub const WithdrawFromLpRatio: u8 = 26;
+
+// Ratio for LP & Fomo winner, for earning transaction fee & interest charge
+pub const DistributeFeeLpRatio: u8 = 27;
+pub const DistributeResrevedRatio: u8 = 28;
+
+// interest charge period
+pub const InterestPeriod: u8 = 29;
+// force balance pool position ratio
+pub const ForceBalancePoolRatio: u8 = 30;
+// share pool min distribute amount
+pub const LpFeeMinShareAmount: u8 = 31;
+// force closer reward
+pub const ForceCloseRewardAmount: u8 = 32;
+// min deposit to pool amount
+pub const MinDepositToPoolAmount: u8 = 33;
+// fore to balance pool min gap
+pub const ForceBalancePoolGap: u8 = 34;
+// Fomo block counts
+pub const FomoBlocksCount: u8 = 35;
+// Compensation Ratio for RiskFund
+pub const CompensateRatio: u8 = 36;
+
+pub const LongDirection: i8 = 1;
+pub const ShortDirection: i8 = -1;
+
+pub const TraderWithExtraDiscount: u8 = 1;
+pub const TraderWithoutExtraDiscount: u8 = 2;

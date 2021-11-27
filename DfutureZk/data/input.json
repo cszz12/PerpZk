@@ -1,0 +1,1006 @@
+{
+  "type": "contract",
+  "storages": {
+    "0x0000000000000000000000000000000000000000": [
+      "0x0",
+      [],
+      "0x0",
+      "0x0",
+      "0",
+      "0",
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      {
+        "vTokenAmount": "0",
+        "dTokenAmount": "0"
+      },
+      [],
+      [],
+      "0",
+      "0",
+      [],
+      [],
+      "0",
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      "0x0",
+      "0x0",
+      "0x0",
+      false,
+      "0",
+      false,
+      [],
+      {
+        "lpFees": "0",
+        "lpInterest": "0",
+        "reserved": "0",
+        "reserved1": "0"
+      },
+      {
+        "trader": "0x0",
+        "blocknum": "0"
+      },
+      [],
+      [],
+      [],
+      [],
+      "0x0",
+      {
+        "iouTotalFees": "0",
+        "iouTotalInterest": "0"
+      },
+      {
+        "forceClosedDeposit": "0",
+        "priceSlippagedDeposit": "0"
+      },
+      [],
+      "0x0",
+      "0",
+      "0x0",
+      [],
+      [],
+      [],
+      [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        },
+        {
+          "dftAmount": "0",
+          "discount": "0"
+        }
+      ],
+      [],
+      [],
+      [],
+      "0",
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  "msg": {
+    "sender": "0x0000000000000000000000000000000000000000",
+    "recipient": "0x0000000000000000000000000000000000000000",
+    "token_address": "0x0000000000000000000000000000000000000000",
+    "amount": "0"
+  },
+  "arguments": {
+    "adjustPoolParam": {
+      "poolIndexes": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "newAllocPoints": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    },
+    "stake": {
+      "now": "0",
+      "poolIndex": "0",
+      "owner": "0x0",
+      "amount": "0"
+    },
+    "setMaster": {
+      "newMaster": "0x0"
+    },
+    "claimFomoToSelf": {},
+    "queryPositionFeeAndRatio": {
+      "_symbol": "0",
+      "_amount": "0",
+      "_direction": "0",
+      "_isForOpen": false
+    },
+    "setExternalAddress": {
+      "_type": "0",
+      "_extAddress": "0x0"
+    },
+    "setRatio": {
+      "index": "0",
+      "ratio": "0"
+    },
+    "setMaxPositionAmount": {
+      "_symbol": "0",
+      "maxAmount": "0"
+    },
+    "unclearing": {},
+    "drainBalanceOf": {
+      "owner": "0x0",
+      "symbol": "0"
+    },
+    "onlyAllowedMaxPositionValue": {
+      "symbol": "0",
+      "positionValue": "0"
+    },
+    "queryExtraDiscount": {
+      "trader": "0x0"
+    },
+    "getTotalRatioOf": {
+      "owner": "0x0",
+      "poolIndex": "0"
+    },
+    "latestRoundData": {
+      "feeder": "0x0"
+    },
+    "distributeFeesOfLP": {},
+    "GetTotalSupply": {},
+    "queryFomoInfo": {
+      "blocknum": "0"
+    },
+    "getPriceFromChainLink": {
+      "symbol": "0"
+    },
+    "getUserInfo": {
+      "poolIndex": "0",
+      "owner": "0x0"
+    },
+    "setAdmin": {
+      "newAdmin": "0x0"
+    },
+    "onRelationCheck": {
+      "child": "0x0",
+      "parent": "0x0"
+    },
+    "transferUsdtFromPerpetual": {
+      "to": "0x0",
+      "amount": "0"
+    },
+    "setB32U128": {
+      "tp": {
+        "ETH": "0",
+        "USDT": "0"
+      },
+      "symbol": "0",
+      "val": "0"
+    },
+    "claimReserved": {},
+    "getLpTokenInfoWithAccelerate": {
+      "user": "0x0"
+    },
+    "init": {},
+    "queryPendingInterest": {
+      "holder": "0x0",
+      "symbol": "0",
+      "blockNumber": "0"
+    },
+    "depositToPool": {
+      "_usdtAmount": "0"
+    },
+    "calculatePositionFeeWithCache": {
+      "symbol": "0",
+      "positionValue": "0",
+      "direction": "0",
+      "dftAmount": "0"
+    },
+    "onlyExistPosition": {
+      "holder": "0x0",
+      "symbol": "0"
+    },
+    "setB32FPTypesPosition": {
+      "tp": {
+        "ETH": {
+          "amount": "0",
+          "price": "0",
+          "modifyBlock": "0",
+          "direction": "0"
+        },
+        "USDT": {
+          "amount": "0",
+          "price": "0",
+          "modifyBlock": "0",
+          "direction": "0"
+        }
+      },
+      "symbol": "0",
+      "val": {
+        "amount": "0",
+        "price": "0",
+        "modifyBlock": "0",
+        "direction": "0"
+      }
+    },
+    "setRatioFP": {
+      "_type": "0",
+      "_ratio": "0"
+    },
+    "setB32U248": {
+      "tp": {
+        "ETH": "0",
+        "USDT": "0"
+      },
+      "symbol": "0",
+      "val": "0"
+    },
+    "onlyOnce": {},
+    "burn": {
+      "account": "0x0",
+      "amount": "0"
+    },
+    "setTradersWithExtraFeeDiscount": {
+      "trader": "0x0",
+      "withExtraDiscount": false
+    },
+    "setRelationForce": {
+      "children": [
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ],
+      "parents": [
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    },
+    "transferUsdtToPerpetual": {
+      "from": "0x0",
+      "amount": "0"
+    },
+    "onlyMaster": {},
+    "getStakedLpTokenInfo": {
+      "user": "0x0"
+    },
+    "withdraw": {
+      "_symbol": "0",
+      "_usdtAmount": "0"
+    },
+    "mint": {
+      "account": "0x0",
+      "amount": "0"
+    },
+    "settleHolderInterest": {
+      "holder": "0x0",
+      "symbol": "0",
+      "currentPrice": "0"
+    },
+    "getStakedDTokenInfo": {
+      "user": "0x0"
+    },
+    "pause": {},
+    "setGlobalInterestRates": {
+      "symbol": "0",
+      "index": "0",
+      "rates": {
+        "longRatio": "0",
+        "longRatioWithPrice": "0",
+        "shortRatio": "0",
+        "shortRatioWithPrice": "0"
+      }
+    },
+    "setRoot": {
+      "root": "0x0"
+    },
+    "setAddress": {
+      "index": "0",
+      "addr": "0x0"
+    },
+    "healPool": {
+      "_usdtAmount": "0"
+    },
+    "stopGlobalInterestsRate": {
+      "symbol": "0"
+    },
+    "queryBalanceOfFees": {},
+    "updateGlobalInterestsRate": {
+      "symbol": "0",
+      "currentPrice": "0",
+      "blockNumber": "0"
+    },
+    "pendingTokenInternal": {
+      "user": "0x0",
+      "poolIndex": "0",
+      "owner": "0x0"
+    },
+    "withdrawFromPool": {
+      "_lpTokenAmount": "0"
+    },
+    "updateIssuePoolUserInfo": {
+      "poolIndex": "0",
+      "owner": "0x0",
+      "amount": "0",
+      "inc": false
+    },
+    "onlySupportSymbol": {
+      "symbol": "0"
+    },
+    "onlyOwner": {},
+    "balanceOf": {
+      "account": "0x0"
+    },
+    "queryInterestRatio": {
+      "symbol": "0",
+      "index": "0",
+      "blockNumber": "0"
+    },
+    "setUsdtAddress": {
+      "usdtAddress": "0x0"
+    },
+    "getPoolUserInfo": {
+      "user": "0x0",
+      "poolIndex": "0"
+    },
+    "new": {
+      "value": "0"
+    },
+    "onlyMoreThanMinAmount": {
+      "symbol": "0",
+      "amount": "0"
+    },
+    "settleUserReward": {
+      "poolIndex": "0",
+      "owner": "0x0"
+    },
+    "addLedgerOfHolder": {
+      "holder": "0x0",
+      "symbol": "0",
+      "amount": "0"
+    },
+    "test_mint": {},
+    "unpause": {
+      "blockNumber": "0"
+    },
+    "getParent": {
+      "addr": "0x0"
+    },
+    "queryPosition": {
+      "_holder": "0x0",
+      "symbol": "0"
+    },
+    "removeAccelerate": {
+      "now": "0"
+    },
+    "transferOwnership": {
+      "newOwner": "0x0"
+    },
+    "safeUsdtTransfer": {
+      "to": "0x0",
+      "amount": "0"
+    },
+    "queryIOUFeesAndInterests": {
+      "_holder": "0x0"
+    },
+    "pendingTokenForSpecialPool": {
+      "poolIndex": "0"
+    },
+    "payOffInterest": {
+      "holder": "0x0",
+      "symbol": "0"
+    },
+    "setSupportTradePair": {
+      "_symbol": "0",
+      "_minAmount": "0",
+      "_maxPositionValue": "0",
+      "_decimals": "0"
+    },
+    "stakeDToken": {
+      "now": "0",
+      "amount": "0"
+    },
+    "clearing": {},
+    "safeTransfer": {
+      "token": "0",
+      "to": "0x0",
+      "amount": "0"
+    },
+    "setParent": {
+      "parent": "0x0"
+    },
+    "onlyAdmin": {},
+    "deposit": {
+      "_symbol": "0",
+      "_usdtAmount": "0"
+    },
+    "subLedgerOfHolder": {
+      "holder": "0x0",
+      "symbol": "0",
+      "amount": "0"
+    },
+    "unstakeDToken": {
+      "now": "0",
+      "amount": "0"
+    },
+    "setTradePairStatus": {
+      "_symbol": "0",
+      "_isSupport": false,
+      "_isEliminate": false
+    },
+    "refreshAllSymbolsPrice": {},
+    "updateFeePoolUserInfo": {
+      "now": "0",
+      "poolIndex": "0",
+      "owner": "0x0",
+      "amount": "0",
+      "inc": false
+    },
+    "getAccelerateInfo": {
+      "user": "0x0"
+    },
+    "getRatioOf": {
+      "poolIndex": "0",
+      "owner": "0x0",
+      "amount": "0"
+    },
+    "UpdateUserInfo": {
+      "poolIndex": "0",
+      "owner": "0x0",
+      "userinfo": {
+        "amount": "0",
+        "rewardDebt": "0",
+        "deadline": "0"
+      }
+    }
+  }
+}

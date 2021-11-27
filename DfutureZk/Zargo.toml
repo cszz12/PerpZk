@@ -1,0 +1,7 @@
+[project]
+name = 'dfuture-zk'
+type = 'contract'
+version = '0.1.0'
+[dependencies]
+MixedMath='0.1.0'
+IERC20='0.1.0'

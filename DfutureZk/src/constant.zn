@@ -1,0 +1,87 @@
+// DFT Pool: LpToken, Trader, Partner, Fomo, Dynamic, Airdrop, Community
+pub const POOL_INFO_LIST_LENGTH: u248 = 8;
+pub const D_TOKEN_ISSUE_RATE_ARRAY_LENGTH: u248 = 2;
+pub const LP_TOKEN_POOL_INDEX: u248 = 0;
+pub const TRADER_POOL_INDEX: u248 = 1;
+pub const PARTNER_POOL_INDEX: u248 = 2;
+pub const FOMO_POOL_INDEX: u248 = 3;
+pub const DYNAMIC_POOL_INDEX: u248 = 4;
+pub const AIRDRO_PPOOL_INDEX: u248 = 5;
+pub const COMMUNITY_POOL_INDEX: u248 = 6;
+
+// USDT Pool: LpTokenRebate, DTokenRebate
+pub const LP_TOKEN_REBATE_POOL_INDEX: u248 = 7;
+pub const D_TOKEN_REBATE_POOL_INDEX: u248 = 8;
+
+pub const STAKE_TYPE_ISSUE: u248 = 0;
+pub const STAKE_TYPE_REBATE: u248 = 1;
+
+pub const REWARD_NOTIFY_USDT: u248 = 0;
+pub const REWARD_NOTIFY_D_TOKEN: u248 = 1;
+
+pub const ACC_D_TOKEN_PER_SHARE_MULTIPLIER: u248 = 1E18;
+// AddressMap index:
+pub const LP_TOKEN_ADDRESS_INDEX: u248 = 0;
+pub const D_TOKEN_ADDRESS_INDEX: u248 = 1;
+
+pub const USDT_ADDRESS_INDEX: u248 = 2;
+pub const PARTNER_ADDRESS_INDEX: u248 = 4;
+pub const AIRDROP_ADDRESS_INDEX: u248 = 5;
+pub const TRADER_ADDRESS_INDEX: u248 = 6;
+pub const DYNAMIC_ADDRESS_INDEX: u248 = 7;
+pub const COMMUNITY_ADDRESS_INDEX: u248 = 8;
+pub const ACCELERATE_FEE_ADDRESS_INDEX: u248 = 9;
+
+pub const RATIO_BASE: u248 = 1E18;
+
+// ratio map index
+pub const DFT_USDT_INDEX: u248 = 0;
+pub const DFT_FEE_INDEX: u248 = 1;
+
+pub const ISSUE_TOTAL_ALLOC_POINT: u248 = 0;
+pub const REBATE_ALLOC_POINT: u248 = 0;
+
+pub const BLOCK_NUMBER: u248 = 0;
+pub const BLOCK_TIMESTAMP: u248 = 1;
+
+// timestamp per day in seconds
+pub const TS_PER_DAY: u248 = 86400;
+
+
+// poolBase
+pub const PRECISION_DECIMALS_18: u248 = 1E18;
+// uint256(10**18); // precision for LpToken
+pub const MAX_ENOUGH_MARGIN: u248 = 1E10;// uint256(10000*10**6);// magic number for infinity
+
+pub const LONG_DIRECTION: i8 = 1;
+pub const SHORT_DIRECTION: i8 = -1;
+
+pub const POOL_MARGIN_RATIO: u8 = 1;
+pub const NAKED_POSITION_RATIO: u8 = 2;
+
+// transaction      fee curve params
+pub const POSITION_FEE_S_RATIO: u8 = 3;
+pub const POSITION_FEE_E_RATIO: u8 = 4;
+
+// interest curve params
+pub const POSITIONINTEREST_S_RATIO: u8 = 5;
+pub const POSITIONINTEREST_E_RATIO: u8 = 6;
+
+// Extra discount 2 digitals, 95 stands for 95%
+pub const EXTAR_DISCOUNT_LEVEL: u8 = 7;
+
+//Interest rate additional offset
+pub const POSITIONINTEREST_COMP: u8 = 8;
+// Extra Fee Discount Ratio
+pub const EXTRA_FEE_DISCOUNT: u8 = 9;
+
+pub const DECIMALS: u248 = 6;
+
+pub const USDT_DECIMALS: u248 = 1E6;
+
+pub const PRECESION_DECIMALS: u248 = 1E6;
+
+pub const RATE_INTEGER: i248 = 1000;
+pub const RATE_NEGATIVE: i248 = -1000;
+
+pub const SYS_SUPPORT_TRADE_SYMBOLS_LENGTH: u8 = 100;

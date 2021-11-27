@@ -1,0 +1,8 @@
+[project]
+name = 'PositionUtil'
+type = 'library'
+version = '0.1.0'
+
+[dependencies]
+FPTypes = '0.1.0'
+MixedMath='0.1.0'

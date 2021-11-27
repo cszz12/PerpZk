@@ -1,0 +1,82 @@
+//!
+//! The 'MixedMath' contract entry.
+//!
+pub const PRECESION_DECIMALS: u248 = 1E6;
+
+fn min(a: u248, b: u248) -> u248 {
+    if a > b {
+        b
+    } else {
+        a
+    }
+}
+
+fn sub(a: u248, b: u248) -> u248 {
+     a - b
+}
+
+fn iSub(a: i248, b: i248) -> i248 {
+    a - b
+}
+
+fn add(a: u248, b: u248) -> u248 {
+    a + b
+}
+
+fn mul(a: u248, b: u248) -> u248 {
+    a * b
+}
+
+fn div(a: u248, b: u248) -> u248 {
+    a / b
+}
+
+fn subIU( a: i248, b: u248) -> i248 {
+    a - (b as i248)
+}
+
+fn subUI( a: u248, b: i248) -> u248 {
+    if (b > 0) {
+        a - (b as u248)
+    } else {
+        a + (-b as u248)
+    }
+}
+
+fn addUI( a: u248, b: i248) -> u248 {
+    addIU(b, a)
+}
+
+// mixed op: I for signed, U for unsigned
+fn addIU( a: i248, b: u248) -> u248 {
+    if (a < 0) {
+        let absa = -a as u248;
+        /*
+         * Don't throw err, but default to 0
+         */
+        if (absa > b) {
+            0 as u248
+        } else {
+            sub(b, absa)
+        }
+    } else {
+        b + (a as u248)
+    }
+}
+
+
+fn pmul(a: u248, b: u248) -> i248 {
+    div(mul(a, b), PRECESION_DECIMALS) as i248
+}
+
+fn pdiv(a: u248, b: u248) -> u248 {
+    div(mul(a, PRECESION_DECIMALS), b)
+}
+
+fn abs(a: i248) -> u248 {
+    if (a < 0) {
+        -a as u248
+    } else {
+        a as u248
+    }
+}

@@ -1,0 +1,3671 @@
+//!
+//! The 'dfuture-zk' contract entry.
+//!
+
+mod types;
+mod constant;
+mod FPconstant;
+use std::collections::MTreeMap;
+
+use IERC20::Ierc20;
+use MixedMath::{abs};
+use MixedMath::div;
+use MixedMath::mul;
+use MixedMath::add;
+use MixedMath::pmul;
+use MixedMath::sub;
+use MixedMath::subIU;
+use MixedMath::subUI;
+use MixedMath::addIU;
+use MixedMath::iSub;
+use MixedMath::min;
+
+use self::types::UserInfo;
+use self::types::PoolInfo;
+use self::types::Address;
+use self::types::AccelerateSummary;
+use self::types::AccelerateUserInfo;
+use self::types::bytes32;
+use self::types::FPTypesPosition;
+use self::types::FPTypesTradeSymbolSetting;
+use self::types::FPTypesFomoTraderInfo;
+use self::types::FPTypesPositionFeeDeposit;
+use self::types::FPTypesRatesStruct;
+use self::types::FPTypesInterestIndex;
+use self::types::FPTypesIOUStruct;
+use self::types::FPTypesPoolDeposits;
+use self::types::B32U128;
+use self::types::B32U248;
+use self::types::B32FPTypesPosition;
+use self::types::OpenPositionParams;
+use self::types::DTokenIssueRate;
+
+//pool
+use self::types::PositionLimitation;
+use self::types::DiscountSetting;
+use self::types::InstantInterestRate;
+use self::types::OfflinePriceInfo;
+use self::types::STokensOnChainLink;
+
+// DFT Pool: LpToken, Trader, Partner, Fomo, Dynamic, Airdrop, Community
+use self::constant::LP_TOKEN_POOL_INDEX;
+use self::constant::TRADER_POOL_INDEX;
+use self::constant::PARTNER_POOL_INDEX;
+use self::constant::FOMO_POOL_INDEX;
+use self::constant::DYNAMIC_POOL_INDEX;
+use self::constant::AIRDRO_PPOOL_INDEX;
+use self::constant::COMMUNITY_POOL_INDEX;
+
+// USDT Pool: LpTokenRebate, DTokenRebate
+use self::constant::LP_TOKEN_REBATE_POOL_INDEX;
+use self::constant::D_TOKEN_REBATE_POOL_INDEX;
+
+use self::constant::STAKE_TYPE_ISSUE;
+use self::constant::STAKE_TYPE_REBATE;
+
+use self::constant::REWARD_NOTIFY_USDT;
+use self::constant::REWARD_NOTIFY_D_TOKEN;
+
+use self::constant::ACC_D_TOKEN_PER_SHARE_MULTIPLIER;
+// AddressMap index:
+use self::constant::LP_TOKEN_ADDRESS_INDEX;
+use self::constant::D_TOKEN_ADDRESS_INDEX;
+
+use self::constant::USDT_ADDRESS_INDEX;
+use self::constant::PARTNER_ADDRESS_INDEX;
+use self::constant::AIRDROP_ADDRESS_INDEX;
+use self::constant::TRADER_ADDRESS_INDEX;
+use self::constant::DYNAMIC_ADDRESS_INDEX;
+use self::constant::COMMUNITY_ADDRESS_INDEX;
+use self::constant::ACCELERATE_FEE_ADDRESS_INDEX;
+
+use self::constant::RATIO_BASE;
+use self::constant::POOL_INFO_LIST_LENGTH;
+use self::constant::D_TOKEN_ISSUE_RATE_ARRAY_LENGTH;
+
+// ratio map index:
+use self::constant::DFT_USDT_INDEX;
+use self::constant::DFT_FEE_INDEX;
+
+use self::constant::ISSUE_TOTAL_ALLOC_POINT;
+use self::constant::REBATE_ALLOC_POINT;
+
+use self::constant::BLOCK_NUMBER;
+use self::constant::TS_PER_DAY;
+
+// FPconstant
+use self::FPconstant::PrecisionDecimals6;
+use self::FPconstant::PrecisionDecimals18;
+use self::FPconstant::MAX_ENOUGH_MARGIN;
+use self::FPconstant::UsdtAddress;
+use self::FPconstant::LpTokenWrapperAddress;
+use self::FPconstant::FPOracleAddress;
+use self::FPconstant::DTokenAddress;
+use self::FPconstant::LiquidPoolAddress;
+use self::FPconstant::DesignatedPositionCloser;
+use self::FPconstant::ReservedClaimer;
+use self::FPconstant::MaintainMarginRatio;
+use self::FPconstant::ForceCloseMarginRatio;
+use self::FPconstant::SlippageRatio;
+use self::FPconstant::WithdrawFromLpRatio;
+use self::FPconstant::DistributeFeeLpRatio;
+use self::FPconstant::DistributeResrevedRatio;
+use self::FPconstant::InterestPeriod;
+use self::FPconstant::ForceBalancePoolRatio;
+use self::FPconstant::LpFeeMinShareAmount;
+use self::FPconstant::ForceCloseRewardAmount;
+use self::FPconstant::MinDepositToPoolAmount;
+use self::FPconstant::ForceBalancePoolGap;
+use self::FPconstant::FomoBlocksCount;
+use self::FPconstant::CompensateRatio;
+use self::FPconstant::LongDirection;
+use self::FPconstant::ShortDirection;
+use self::FPconstant::TraderWithExtraDiscount;
+use self::FPconstant::TraderWithoutExtraDiscount;
+
+
+// pool
+use self::constant::PRECISION_DECIMALS_18;
+use self::constant::LONG_DIRECTION;
+use self::constant::POOL_MARGIN_RATIO;
+use self::constant::NAKED_POSITION_RATIO;
+use self::constant::POSITION_FEE_S_RATIO;
+use self::constant::POSITION_FEE_E_RATIO;
+use self::constant::POSITIONINTEREST_S_RATIO;
+use self::constant::POSITIONINTEREST_E_RATIO;
+use self::constant::EXTAR_DISCOUNT_LEVEL;
+use self::constant::POSITIONINTEREST_COMP;
+use self::constant::EXTRA_FEE_DISCOUNT;
+use self::constant::USDT_DECIMALS;
+use self::constant::BLOCK_TIMESTAMP;
+use self::constant::RATE_INTEGER;
+use self::constant::RATE_NEGATIVE;
+use self::constant::SYS_SUPPORT_TRADE_SYMBOLS_LENGTH;
+use self::constant::PRECESION_DECIMALS;
+use self::constant::SHORT_DIRECTION;
+
+pub const UniXAddressIndex: u248 = 10 as u248;
+pub const UniAddressIndex: u248 = 11 as u248;
+
+pub const UniXPoolIndex: u248 = 9 as u248;
+pub const UniPoolIndex: u248 = 10 as u248;
+
+pub const PoolMarginRatio: u8 = 1 as u8;
+pub const NakedPositionRatio: u8 = 2 as u8;
+
+pub const LpTokenUSDTPoolIndex: u248 = 7 as u248;
+pub const DTokenUSDTPoolIndex: u248 = 8 as u248;
+pub const UniXUSDTPoolIndex: u248 = 11 as u248;
+pub const UniUSDTPoolIndex: u248 = 12 as u248;
+
+pub const DistributeResreved1Ratio: u8 = 37;
+
+// open/close operation between block counts for extra slippage ratio.
+pub const ExtraSlippageRatioLvl0: u8 = 38;
+pub const BlockCountForExtraSlippageLvl0: u8 = 39;
+pub const ExtraSlippageRatioLvl1: u8 = 40;
+pub const BlockCountForExtraSlippageLvl1: u8 = 41;
+pub const ExtraSlippageRatioLvl2: u8 = 42;
+pub const BlockCountForExtraSlippageLvl2: u8 = 43;
+
+pub const TradingParentRatioIndex: u160 = 2 as u160;
+pub const TradingGrandpaRatioIndex: u160 = 3 as u160;
+pub const AccelerateDftRatioIndex: u160 = 4 as u160;
+
+pub const RatioBase: u248 = 1E18;
+pub const AccelerateDftRatioBase: u248 = 100 as u248;
+pub const TradingRatioBase: u248 = 100 as u248;
+
+contract DfutureZk{
+pub lptokenIERC20: Ierc20;
+pub dtokenIERC20: Ierc20;
+pub usdtIERC20: Ierc20;
+pub uniIERC20: Ierc20;
+
+pub IssueTotalAllocPoint:u248;
+pub RebateAllocPoint:u248;
+
+pub RelationMap: MTreeMap<Address, Address>;
+pub AddressMap: MTreeMap<u248, Address>;
+pub AllocPointMap: MTreeMap<u248, Address>;
+
+pub PoolInfoList: MTreeMap<u248, PoolInfo>;
+
+pub PoolHolderUserInfoLpToken: MTreeMap<Address, UserInfo>; // unfold all 13 pools by index
+pub PoolHolderUserInfoTrader: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoPartner: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoFomo: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoDynamic: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoAirdrop: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoCommunity: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoLpTokenRebate: MTreeMap<Address, UserInfo>;
+pub PoolHolderUserInfoDTokenRebate: MTreeMap<Address, UserInfo>;
+
+pub accelerateSummary: AccelerateSummary;
+pub AccelerateSummaryMap:MTreeMap<Address, AccelerateUserInfo>;
+
+pub DTokenIssueRateArray:MTreeMap<u248, DTokenIssueRate>;
+
+// deprecated
+pub dftUsdtRatio:u248;
+pub selfFomoAmount:u248;
+
+// pub TokenBalances: MTreeMap<Address, u248>;
+
+pub RatioMap: MTreeMap<u248,u248>;
+// pub totalSupply: u248;
+
+// FP state
+// transaction fee owed to traders
+pub IOUFees: MTreeMap<Address, u248>;
+
+// decompose GlobalInterestRates into GlobalInterestRatesBTC/GlobalInterestRatesETH/...
+// modify value to FPTypes.Rates and FPTypes.InterestIndex
+pub GlobalInterestRatesETH: MTreeMap<u128, FPTypesRatesStruct>;
+pub GlobalInterestRatesUSDT: MTreeMap<u128, FPTypesRatesStruct>;
+pub GlobalInterestIndex: MTreeMap<bytes32, FPTypesInterestIndex>;
+
+// + means trader owes platform interests
+// - means platform owes trader interests
+pub IOUInterest: MTreeMap<Address, i248>;
+
+pub SysRatios: MTreeMap<u8, u248>;
+
+pub _admin: Address;
+pub _master:Address;  //Address Master is the FuturePerpetual
+pub _owner: Address;
+pub _paused: bool;
+pub _initialized: u8;
+pub _isClearing: bool;
+
+// setting for trading symbol
+pub SysTradeSymbolSettings: MTreeMap<bytes32, FPTypesTradeSymbolSetting>;
+
+pub FeeDeposit: FPTypesPositionFeeDeposit;
+pub FomoTraderInfo: FPTypesFomoTraderInfo;
+pub gUserInterestSettledIndex: MTreeMap<Address, B32U128>;
+
+// External map: Address
+pub ExternalContracts: MTreeMap<u8, Address>;
+
+// Trader's collateral balance: 0x1234... => "ETH" => 12345678910
+pub HolderPositionBalances: MTreeMap<Address, B32U248>;
+// // Trader's holding positions, 0x1234... => "ETH" => {}
+pub HolderPositions: MTreeMap<Address, B32FPTypesPosition>;
+
+// Pool pool;
+pub OracleAddress:Address;
+pub IOUInfo: FPTypesIOUStruct;
+pub PoolDeposits: FPTypesPoolDeposits;
+pub MaxPositionAmount: MTreeMap<bytes32, u248>;
+
+pub RiskFundDeposit: i248;
+pub ExtraDiscount: MTreeMap<Address, u8>;
+pub VipTraders: MTreeMap<Address, bool>;
+pub TradersWithExtraFeeDiscount: MTreeMap<Address, bool>;
+
+//pool
+pub SysSupportTradeSymbols:[bytes32;100];
+CurrPosLimit:MTreeMap<bytes32,PositionLimitation>;
+SysValueInBlock:MTreeMap<bytes32,u192>;
+InterestRateRepoters:MTreeMap<Address,bool>;
+InstantInterestRates:MTreeMap<bytes32,InstantInterestRate>;
+
+ETHPoolPositions:MTreeMap<i8,FPTypesPosition>;
+BTCPoolPositions:MTreeMap<i8,FPTypesPosition>;
+
+pub discounts:[DiscountSetting;100];
+
+OfflinePrices:MTreeMap<bytes32,OfflinePriceInfo>;
+TokensOnChainLink:MTreeMap<bytes32,STokensOnChainLink>;
+
+TokenPrecisions:MTreeMap<bytes32,u8>;
+CachedPrices:MTreeMap<bytes32,u248>;
+
+pub PoolUsdtBalances:u248;
+
+// FPPosition
+pub ETHgUserInterestSettledIndex:MTreeMap<Address,u128>;
+pub BTCgUserInterestSettledIndex:MTreeMap<Address,u128>;
+pub USDTgUserInterestSettledIndex:MTreeMap<Address,u128>;
+pub UNIgUserInterestSettledIndex:MTreeMap<Address,u128>;
+
+pub ETHRates: MTreeMap<u128, FPTypesRatesStruct>;
+pub BTCRates: MTreeMap<u128, FPTypesRatesStruct>;
+pub USDTRates: MTreeMap<u128, FPTypesRatesStruct>;
+pub UNIRates: MTreeMap<u128, FPTypesRatesStruct>;
+
+pub ETHHolderPositionBalances:MTreeMap<Address,u248>;
+pub BTCHolderPositionBalances:MTreeMap<Address,u248>;
+pub USDTHolderPositionBalances:MTreeMap<Address,u248>;
+pub UNIHolderPositionBalances:MTreeMap<Address,u248>;
+
+pub fn new() -> Self {
+    Self {
+        lptokenIERC20: Ierc20,
+        dtokenIERC20: Ierc20,
+        usdtIERC20: Ierc20,
+        uniIERC20: Ierc20,
+
+        IssueTotalAllocPoint: 100 as u248,
+        RebateAllocPoint: 95 as u248,
+
+        RelationMap: MTreeMap,
+        AddressMap: MTreeMap,
+        AllocPointMap: MTreeMap,
+
+        PoolInfoList: MTreeMap,
+        PoolHolderUserInfoLpToken: MTreeMap,
+        PoolHolderUserInfoTrader: MTreeMap,
+        PoolHolderUserInfoPartner: MTreeMap,
+        PoolHolderUserInfoFomo: MTreeMap,
+        PoolHolderUserInfoDynamic: MTreeMap,
+        PoolHolderUserInfoAirdrop: MTreeMap,
+        PoolHolderUserInfoCommunity: MTreeMap,
+        PoolHolderUserInfoLpTokenRebate: MTreeMap,
+        PoolHolderUserInfoDTokenRebate: MTreeMap,
+
+        accelerateSummary: AccelerateSummary {
+            vTokenAmount: 0 as u248, // effective vToken
+            dTokenAmount: 0 as u248, // total dToken
+        },
+        AccelerateSummaryMap: MTreeMap,
+
+        DTokenIssueRateArray: MTreeMap,
+
+        dftUsdtRatio: 0 as u248,
+        selfFomoAmount: 0 as u248,
+        // TokenBalances: MTreeMap,
+        RatioMap: MTreeMap,
+        // totalSupply: 0 as u248,
+
+        IOUFees: MTreeMap,
+
+        GlobalInterestRatesETH: MTreeMap,
+        GlobalInterestRatesUSDT: MTreeMap,
+        GlobalInterestIndex: MTreeMap,
+
+        IOUInterest: MTreeMap,
+        SysRatios: MTreeMap,
+
+        _admin: zksync::msg.sender,
+        _master: zksync::msg.sender,
+        _owner: zksync::msg.sender,
+        _paused: false,
+        _initialized: 0 as u8,
+        _isClearing: false,
+
+        SysTradeSymbolSettings: MTreeMap,
+        FeeDeposit: FPTypesPositionFeeDeposit {
+            lpFees: 0 as u248,     // transaction fee income for LP
+            lpInterest: 0 as u248, // interest income for LP
+
+            reserved: 0 as u248, // reserved
+            reserved1: 0 as u248, // reserved
+        },
+        FomoTraderInfo: FPTypesFomoTraderInfo {
+            trader: 0 as Address, // last trader
+            blocknum: 0 as u96,   // last trading block
+        },
+        gUserInterestSettledIndex: MTreeMap,
+        ExternalContracts: MTreeMap,
+        HolderPositionBalances: MTreeMap,
+        HolderPositions: MTreeMap,
+
+        OracleAddress: Address,
+        IOUInfo: FPTypesIOUStruct {
+            iouTotalFees: 0 as u248,
+            iouTotalInterest: 0 as u248,
+        },
+        PoolDeposits: FPTypesPoolDeposits {
+            forceClosedDeposit: 0 as u128,
+            priceSlippagedDeposit: 0 as u128,
+        },
+        MaxPositionAmount: MTreeMap,
+        RiskFundDeposit: 0 as i248,
+        ExtraDiscount: MTreeMap,
+        VipTraders: MTreeMap,
+        TradersWithExtraFeeDiscount: MTreeMap,
+
+        //pool
+        SysSupportTradeSymbols: [bytes32; 100],
+        CurrPosLimit: MTreeMap,
+        SysValueInBlock: MTreeMap,
+        InterestRateRepoters: MTreeMap,
+        InstantInterestRates: MTreeMap,
+        ETHPoolPositions: MTreeMap,
+        BTCPoolPositions: MTreeMap,
+
+        discounts: [DiscountSetting { dftAmount: 0 as i248, discount: 0 as i248 }; 100 as u8],
+        OfflinePrices: MTreeMap,
+        TokensOnChainLink: MTreeMap,
+        TokenPrecisions: MTreeMap,
+        CachedPrices: MTreeMap,
+        PoolUsdtBalances: 0 as u248,
+
+        ETHgUserInterestSettledIndex:MTreeMap,
+        BTCgUserInterestSettledIndex:MTreeMap,
+        USDTgUserInterestSettledIndex:MTreeMap,
+        UNIgUserInterestSettledIndex:MTreeMap,
+
+        ETHRates: MTreeMap,
+        BTCRates: MTreeMap,
+        USDTRates: MTreeMap,
+        UNIRates: MTreeMap,
+
+        ETHHolderPositionBalances:MTreeMap,
+        BTCHolderPositionBalances:MTreeMap,
+        USDTHolderPositionBalances:MTreeMap,
+        UNIHolderPositionBalances:MTreeMap,
+    }
+}
+
+pub fn init(mut self) {
+    self.RatioMap.insert(DFT_USDT_INDEX, 100000 as u248);
+    self.RatioMap.insert(DFT_FEE_INDEX, 100000 as u248);
+
+    self.PoolInfoList.insert(0 as u248, PoolInfo { allocPoint: 10 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(1 as u248, PoolInfo { allocPoint: 48 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(2 as u248, PoolInfo { allocPoint: 16 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(3 as u248, PoolInfo { allocPoint: 5 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(4 as u248, PoolInfo { allocPoint: 10 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(5 as u248, PoolInfo { allocPoint: 8 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(6 as u248, PoolInfo { allocPoint: 3 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+    self.PoolInfoList.insert(7 as u248, PoolInfo { allocPoint: 70 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_REBATE });
+    self.PoolInfoList.insert(8 as u248, PoolInfo { allocPoint: 70 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_REBATE });
+    self.PoolInfoList.insert(9 as u248, PoolInfo { allocPoint: 70 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_REBATE });
+    self.PoolInfoList.insert(10 as u248, PoolInfo { allocPoint: 70 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_REBATE });
+    self.PoolInfoList.insert(11 as u248, PoolInfo { allocPoint: 25 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_REBATE });
+    self.PoolInfoList.insert(12 as u248, PoolInfo { allocPoint: 10 as u248, lastRewardBlock: BLOCK_NUMBER, accDTokenPerShare: 0 as u248, amount: 0 as u248, stakeType: STAKE_TYPE_ISSUE });
+
+    self.DTokenIssueRateArray.insert(1 as u248, DTokenIssueRate { checkpoint: 0 as u248, dtokenPerBlock: 0 as u248 });
+
+    //pool
+    self.SysRatios.insert(POOL_MARGIN_RATIO, 300000 as u248);
+    self.SysRatios.insert(NAKED_POSITION_RATIO as u8, 1000000 as u248);
+    self.SysRatios.insert(POSITION_FEE_S_RATIO, 600 as u248);
+    self.SysRatios.insert(POSITION_FEE_E_RATIO, 10000 as u248);
+    self.SysRatios.insert(POSITIONINTEREST_S_RATIO, 0 as u248);
+    self.SysRatios.insert(POSITIONINTEREST_E_RATIO, 3000 as u248);
+    self.SysRatios.insert(POSITIONINTEREST_COMP, 100 as u248);
+    self.SysRatios.insert(EXTRA_FEE_DISCOUNT, 800000 as u248);
+
+    self._initialized == 1; 
+}
+
+//admin, owner, master operations
+pub fn onlyOnce(self) {
+    require(self._initialized == 0, "OnlyOnce: function recalled");
+}
+
+pub fn onlyAdmin(self) {
+    require(zksync::msg.sender == self._admin, "admin required!");
+}
+
+pub fn onlyMaster(self) {
+    require(zksync::msg.sender == self._master, "master required!");
+}
+
+pub fn onlyOwner(self) {
+    require(zksync::msg.sender == self._owner, "owner required!");
+}
+
+fn whenNotPaused(self) {
+    require(self._paused == false, "paused!")
+}
+
+fn whenNotClearing(self) {
+    require(self._isClearing == false, "clearing!")
+}
+
+pub fn transferOwnership(mut self, newOwner: Address) {
+    self.onlyOwner();
+    require(newOwner != 0, "Ownable: new owner is the zero");
+
+    // emit OwnershipTransferred(_owner, newOwner);
+    self._owner = newOwner;
+}
+
+pub fn setMaster(mut self, newMaster: Address) {
+    self.onlyOwner();
+
+    require(newMaster != 0, "new master is the zero");
+    // emit MasterSet(_master, newMaster);
+    self._master = newMaster;
+}
+
+pub fn setAdmin(mut self, newAdmin: Address) {
+    self.onlyOwner();
+
+    require(newAdmin != 0, "new admin is the zero");
+    // emit AdminSet(admin, _admin);
+    self._admin = newAdmin;
+}
+
+pub fn setAddress(mut self, index: u248, addr: Address) {
+    self.onlyAdmin();
+    self.AddressMap.insert(index, addr);
+}
+
+pub fn setUsdtAddress(mut self, usdtAddress: Address) {
+    require(zksync::msg.sender == self._master, "master required!");
+
+    self.AddressMap.insert(USDT_ADDRESS_INDEX, usdtAddress);
+}
+
+pub fn setRatio(mut self, index: u248, ratio: u248) {
+    self.onlyAdmin();
+
+    self.RatioMap.insert(index, ratio);
+}
+
+pub fn pause(mut self) {
+    self.onlyAdmin();
+
+    self._paused = true;
+}
+
+pub fn unpause(mut self, blockNumber: u248) {
+    self.onlyAdmin();
+
+    self._paused = false;
+    self.FomoTraderInfo.blocknum = blockNumber as u96;
+}
+
+pub fn clearing(mut self) {
+    self.onlyAdmin();
+    self._isClearing = true;
+}
+
+pub fn unclearing(mut self) {
+    self.onlyAdmin();
+    self._isClearing = false;
+}
+
+// relation 
+fn setRelation(mut self, child: Address, parent: Address) {
+    require(self.RelationMap.get(child).0 == 0, "parent has been set");
+    require(self.RelationMap.get(parent).0 != 0, "parent not exist");
+    self.RelationMap.insert(child, parent);
+    // emit Relation(child, parent);
+}
+
+pub fn setParent(mut self, parent: Address) {
+    self.setRelation(zksync::msg.sender, parent);
+}
+
+pub fn setRoot(mut self, root: Address) {
+    self.onlyAdmin();
+    require(root != 0, "is: Address 0");
+
+    self.RelationMap.insert(root, root);
+    // emit Relation(root, root);
+}
+
+pub fn getParent(self, addr: Address) -> Address {
+    self.RelationMap.get(addr).0
+}
+
+pub fn onRelationCheck(mut self, child: Address, parent: Address) {
+    require(zksync::msg.sender == self._master, "master required!");
+
+    if (self.RelationMap.get(child).0 == 0) {
+        self.setRelation(child, parent);
+    }
+}
+
+//FP 
+/**
+* Set  address
+* _type = 11  USDT contract address
+* _type = 12  LpTokenWrapper contract address
+* _type = 13  Oracle address
+* _type = 14  DToken contract address
+* _type = 15  LPContract address
+* _type = 16  Designated postiion closer address
+* _type = 17  ReservedClaimer
+*/
+pub fn setExternalAddress(mut self, _type: u8, _extAddress: Address) {
+    self.onlyOwner();
+
+    if (_type == LiquidPoolAddress) {
+        // pool = Pool(_extAddress);
+    } else {
+        self.ExternalContracts.insert(_type, _extAddress);
+    }
+
+    // Pass through to LpTokenWrapper
+    if (_type == UsdtAddress && self.ExternalContracts.get(LpTokenWrapperAddress).0 != 0) {
+        self.setUsdtAddress(_extAddress);
+    }
+}
+
+/**
+* _type = 22  MaintainMarginRatio
+* _type = 23  ForceCloseMarginRatio
+* _type = 24  SlippageRatio
+* _type = 26  WithdrawFromLpRatio
+* _type = 27  DistributeFeeLpRatio
+* _type = 28  DistributeResrevedRatio
+* _type = 29  InterestPeriod
+*/
+pub fn setRatioFP(mut self, _type: u8, _ratio: u248) {
+    self.onlyAdmin();
+
+    self.SysRatios.insert(_type, _ratio);
+}
+
+/**
+* @param _symbol, e.g. web3.utils.fromAscii('eth')
+* @param _minAmount, minimal trading amount when opening position
+* @param _maxPositionValue, when opening, position.amount * price <= _maxPositionValue
+* @param _decimals, e.g. _decimals = 2 means trading amount is multiples of 0.01 eth
+ */
+pub fn setSupportTradePair(
+    mut self,
+    _symbol: bytes32,
+    _minAmount: u248,
+    _maxPositionValue: u248,
+    _decimals: u8,)
+{
+    self.onlyOwner();
+
+    self.SysTradeSymbolSettings.insert(_symbol, FPTypesTradeSymbolSetting {
+        minAmount: _minAmount,
+        maxAllowedValue: _maxPositionValue,
+        isSupport: true,
+        decimals: _decimals,
+    });
+}
+
+pub fn setTradePairStatus(mut self, _symbol: bytes32, _isSupport: bool, _isEliminate: bool)
+{
+    self.onlyAdmin();
+
+    if (_isEliminate) {
+        self.SysTradeSymbolSettings.remove(_symbol);
+    } else {
+        let mut tmp = self.SysTradeSymbolSettings.get(_symbol).0;
+        tmp.isSupport = _isSupport;
+        self.SysTradeSymbolSettings.insert(_symbol, tmp);
+    }
+}
+
+pub fn setMaxPositionAmount(mut self, _symbol: bytes32, maxAmount: u248)
+{
+    self.onlyOwner();
+    self.MaxPositionAmount.insert(_symbol, maxAmount);
+}
+
+//TODO: move to lib, Fptypes op
+fn getB32U128(self, tp: B32U128, symbol: bytes32) -> u128 {
+    let val = match symbol {
+        0 => tp.ETH,
+        1 => tp.USDT,
+
+        _ => tp.ETH,
+    };
+
+    val
+}
+
+fn getB32U248(self, tp: B32U248, symbol: bytes32) -> u248 {
+    let val = match symbol {
+        0 => tp.ETH,
+        1 => tp.USDT,
+
+        _ => tp.ETH,
+    };
+
+    val
+}
+
+fn getB32FPTypesPosition(self, tp: B32FPTypesPosition, symbol: bytes32) -> FPTypesPosition {
+    let val = match symbol {
+        0 => tp.ETH,
+        1 => tp.USDT,
+
+        _ => tp.ETH,
+    };
+
+    val
+}
+
+pub fn setB32U128(self, tp: B32U128, symbol: bytes32, val: u128) -> B32U128 {
+    let mut tp2 = tp;
+    match symbol {
+        0 => tp2.ETH = val,
+        1 => tp2.USDT = val,
+
+        _ => tp2.ETH = val,
+    };
+    tp2
+}
+
+pub fn setB32U248(self, tp: B32U248, symbol: bytes32, val: u248) -> B32U248 {
+    let mut tp2 = tp;
+    match symbol {
+        0 => tp2.ETH = val,
+        1 => tp2.USDT = val,
+
+        _ => tp2.ETH = val,
+    };
+
+    tp2
+}
+
+pub fn setB32FPTypesPosition(self, tp: B32FPTypesPosition, symbol: bytes32, val: FPTypesPosition) -> B32FPTypesPosition {
+    let mut tp2 = tp;
+    match symbol {
+        0 => tp2.ETH = val,
+        1 => tp2.USDT = val,
+
+        _ => tp2.ETH = val,
+    };
+    tp2
+}
+
+pub fn setGlobalInterestRates(mut self, symbol: bytes32, index: u128, rates: FPTypesRatesStruct){
+    match symbol {
+        0 => self.GlobalInterestRatesETH.insert(index, rates),
+        1 => self.GlobalInterestRatesUSDT.insert(index, rates),
+
+        _ => self.GlobalInterestRatesETH.insert(index, rates),
+    };
+}
+
+// FP checker
+pub fn onlySupportSymbol(self, symbol: bytes32) {
+    let tmp = self.SysTradeSymbolSettings.get(symbol).0;
+    require(tmp.isSupport, "Not Support Symbol");
+}
+
+pub fn onlyAllowedMaxPositionValue(self, symbol: bytes32, positionValue: u248) {
+    let tmp = self.SysTradeSymbolSettings.get(symbol).0;
+
+    require(
+        tmp.maxAllowedValue >= positionValue,
+        "Position Value Over Limitation",
+    );
+}
+
+pub fn onlyExistPosition(self, holder: Address, symbol: bytes32) {
+    let tmp = self.HolderPositions.get(holder).0;
+    let pos = self.getB32FPTypesPosition(tmp, symbol);
+
+    require(pos.amount != 0, "Position Not Exist");
+}
+
+pub fn onlyMoreThanMinAmount(self, symbol: bytes32, amount: u248) {
+    let minAmount = (self.SysTradeSymbolSettings.get(symbol).0).minAmount;
+    require(amount >= minAmount, "Amount less than min amount");
+}
+
+// FP ledger 
+pub fn transferUsdtToPerpetual(self, from: Address, amount: u248)
+{
+    if (amount == 0) {
+        ()
+    }
+
+    // TODO: how?
+    // SafeERC20.safeTransferFrom(
+    //     IERC20(ExternalContracts[UsdtAddress]),
+    //     from,
+    //     address(this),
+    //     amount
+    // );
+}
+
+pub fn transferUsdtFromPerpetual(mut self, to: Address, amount: u248)
+{
+    if (amount == 0) {
+        ()
+    }
+
+    self.transfer(
+        to,
+        self.AddressMap.get(USDT_ADDRESS_INDEX).0,
+        amount,
+    );
+}
+
+pub fn drainBalanceOf(mut self, owner: Address, symbol: bytes32) {
+    let mut tmp = self.HolderPositionBalances.get(owner).0;
+    let bal = self.getB32U248(tmp, symbol);
+
+    if (bal == 0) {
+        ()
+    }
+
+    self.transferUsdtFromPerpetual(owner, bal);
+
+    self.setB32U248(tmp, symbol, 0 as u248);
+    self.HolderPositionBalances.insert(owner, tmp);
+}
+
+pub fn addLedgerOfHolder(mut self, holder: Address, symbol: bytes32, amount: u248)
+{
+    let mut tmp = self.HolderPositionBalances.get(holder).0;
+    let bal = self.getB32U248(tmp, symbol);
+
+    self.setB32U248(tmp, symbol, bal + amount);
+    self.HolderPositionBalances.insert(holder, tmp);
+}
+
+pub fn subLedgerOfHolder(mut self, holder: Address, symbol: bytes32, amount: u248)
+{
+    let mut tmp = self.HolderPositionBalances.get(holder).0;
+    let bal = self.getB32U248(tmp, symbol);
+
+    self.setB32U248(tmp, symbol, bal - amount);
+    self.HolderPositionBalances.insert(holder, tmp);
+}
+
+// FP delegate
+fn getStakedDftAmount(self, holder: Address)  -> u248 {
+    let (mut dftAmount, _,_) = self.getStakedDTokenInfo(holder);
+    if (self.ExtraDiscount.get(holder).0 == TraderWithExtraDiscount) {
+        let label: u248 = 1 << 128;
+        dftAmount = dftAmount | label;
+    }
+
+    if (self.TradersWithExtraFeeDiscount.get(holder).0) {
+        let feeLabel: u248 = 1 << 129;
+        dftAmount = dftAmount | feeLabel;
+    }
+    dftAmount
+}
+
+pub fn setTradersWithExtraFeeDiscount(mut self, trader: Address, withExtraDiscount: bool) {
+    self.onlyAdmin();    
+    self.TradersWithExtraFeeDiscount.insert(trader, withExtraDiscount);
+}
+
+fn setExtraDiscount(mut self, trader: Address, discount: bool)  {
+    if (self.ExtraDiscount.get(trader).0 == 0) {
+        self.ExtraDiscount.insert(trader, match discount { 
+            true => TraderWithExtraDiscount,
+            false=> TraderWithoutExtraDiscount,
+        });
+    }
+}
+
+// fixed arraySize = 10
+fn toBalancePool(mut self, compAddr: [Address;10], symbols: [bytes32;10])  {
+    let (poolOffset, offsetRatio) = self.getPositionOffsetAndRatio();
+    if (offsetRatio <= self.SysRatios.get(ForceBalancePoolRatio).0) 
+        {
+            ()
+        }
+
+    let targetDirection = match poolOffset>0 { 
+            true => ShortDirection,
+            false=> LongDirection,
+        };
+    let mut poolOffsetAbs: u248 = abs(poolOffset);
+
+    let quitGap: u248 = self.SysRatios.get(ForceBalancePoolGap).0;
+    for i in 0..10 {
+        if (poolOffsetAbs < quitGap) {
+            ()
+        }
+
+        let addr: Address = compAddr[i];
+        let sym = symbols[i];
+
+        let pos = self.getB32FPTypesPosition(self.HolderPositions.get(addr).0, sym);
+
+        if (pos.amount == 0 || pos.direction != targetDirection)
+        { 
+        } else {
+            let price: u248 = self.readCachedPrice(sym);
+
+            let (profit, _) = self.calProfitAndValue(pos, price);
+            if !(profit < 0) {
+                let mut closeAmount: u248 = poolOffsetAbs/(price);
+                if (closeAmount > pos.amount as u248) { 
+                    closeAmount = pos.amount as u248;
+                }
+                if (closeAmount < (self.SysTradeSymbolSettings.get(sym).0).minAmount)
+                {
+    
+                } else {
+                    poolOffsetAbs = poolOffsetAbs-(price*(closeAmount));
+                    self.doClosePosition(addr, sym , closeAmount, 0 as u248, true, true);
+                    // emit ClosePositionToBalancePool(addr, sym, closeAmount);
+                }
+            }
+        }
+    }
+}
+
+fn claimFeeAndInterestInternal(mut self, holder: Address, symbol: bytes32, toBalance: bool)  {
+    let feeAmount: u248 = self.canClaimIOUFeesAmount(holder);
+    let interestAmount: u248 = self.canClaimInterestAmount(holder);
+    let totalAmount: u248 = feeAmount+(interestAmount);
+    if (totalAmount > 0) {
+        if (toBalance) {
+            self.addLedgerOfHolder(holder, symbol, totalAmount);
+        } else {
+            self.transferUsdtFromPerpetual(holder, totalAmount);
+        }
+
+        // emit FeeInterestRewards(
+        //     holder,
+        //     [feeAmount, interestAmount]
+        // );
+    }
+}
+
+fn claimAllUSDT(mut self)  {
+    self.whenNotPaused();
+    self.claimFeeAndInterestInternal(zksync::msg.sender, (0) as bytes32, false);
+}
+
+/**
+ * @param _symbol, e.g. web3.utils.fromAscii('eth')
+ * @param _amount, the amount to open
+ * @param _direction, direction of opening position. let 0: LONG, let 1: SHORT
+ * @param _acceptablePrice, max/min acceptable price; ignored if is 0
+ * @param _approvedUsdt, approved amount of USDT to be transfered to the smart contract
+ */
+fn openPosition(
+    mut self,
+    _symbol: bytes32,
+    _amount: u248,
+    _direction: i8,
+    _acceptablePrice: u248,
+    _approvedUsdt: u248,
+    parent: Address,
+    withDiscount: bool,
+    txMaker: Address
+)
+{
+    self.whenNotPaused();
+
+    self.setExtraDiscount(txMaker, withDiscount);
+    // If the opening position is opposite to the existing position, then close the existing position first.
+    let position = self.getB32FPTypesPosition((self.HolderPositions.get(txMaker).0), _symbol);
+    if (position.amount != 0 && position.direction != _direction) {
+        if (position.amount as u248 >= _amount) { // close part of the exisiting position
+            self.doClosePosition(txMaker, _symbol, _amount, _acceptablePrice, false, false);
+        } else { // close all the exisiting position and then open new position with the remaining amount
+            self.doClosePosition(txMaker, _symbol, position.amount as u248, _acceptablePrice, false, false);
+            self.doOpenPosition(
+                OpenPositionParams {
+                    txMaker: txMaker,
+                    _symbol: _symbol,
+                    _amount: _amount - position.amount as u248,
+                    _direction: _direction,
+                    _acceptablePrice: _acceptablePrice,
+                    _approvedUsdt: _approvedUsdt,
+                    parent: parent,
+                    disallowInOneBlock: false,
+                }
+                );
+        }
+    } else {
+        self.doOpenPosition(
+            OpenPositionParams {
+                    txMaker: txMaker,
+                    _symbol: _symbol,
+                    _amount: _amount,
+                    _direction: _direction,
+                    _acceptablePrice: _acceptablePrice,
+                    _approvedUsdt: _approvedUsdt,
+                    parent: parent,
+                    disallowInOneBlock: true,
+                }
+            );
+    }
+}
+
+fn doOpenPosition(mut self, p: OpenPositionParams)
+{
+    self.whenNotClearing();
+
+    self.onlySupportSymbol(p._symbol);
+    self.onlyMoreThanMinAmount(p._symbol, p._amount);
+
+    // Notify the LpTokenWrapper about the child-parent relation binding.
+    self.onRelationCheck(p.txMaker, p.parent);
+
+    // read the latest price of this symbol from oracle (do not use cache price)
+    let openPrice: u248 = self.readLatestPrice(p._symbol);
+
+    // if (_acceptablePrice != 0) {
+    //     if (_direction == LongDirection) {
+    //         require(openPrice <= _acceptablePrice, "Price Higher Than Acceptable");
+    //     } else {
+    //         require(openPrice >= _acceptablePrice, "Price Lower Than Acceptable");
+    //     }
+    // }
+    let positionValue: u248 = p._amount*(openPrice);
+    self.onlyAllowedMaxPositionValue(p._symbol, positionValue);
+
+    // update the global interest rate and settle the trader's pending interest if there is any
+    self.settleHolderInterest(p.txMaker, p._symbol, openPrice);
+
+    self.updateFomoInfo(p.txMaker);
+
+    self.transferUsdtToPerpetual(p.txMaker, p._approvedUsdt);
+    // compute the transaction fee and let check:
+// 1) if the opened position helps to reduce pool's naked postion, then it is allowed, otherwise
+// 2) if the opened position makes the pool's naked position > pool balance, then revert
+    let (fee,
+    isPoolDisequilibrium,
+    isWillShrinkOffset) = self.calculatePositionFeeWithCache(p._symbol, positionValue, p._direction, self.getStakedDftAmount(p.txMaker));
+    require(
+        isWillShrinkOffset || !isPoolDisequilibrium,
+        "Open Not let Allowed: Pool Disequilibrium");
+
+    // Record the charged transaction fee.
+    self.depositFees(p.txMaker, fee);
+
+    // refund fee is recorded separately so not go into trader's balance
+    let leftUsdt = match fee < 0 {
+            true => p._approvedUsdt,
+            false => p._approvedUsdt-(fee as u248),
+        };
+    self.addLedgerOfHolder(p.txMaker, p._symbol, leftUsdt);
+
+    self.openHolderPosition(p.txMaker, p._symbol, p._amount, openPrice, p._direction, p.disallowInOneBlock);
+
+    self.poolOpenPosition(p._symbol, p._amount, openPrice, p._direction);
+
+    // emit OpenPosition(
+    //     p.txMaker,
+    //     p._symbol,
+    //     p._amount,
+    //     openPrice,
+    //     p._direction,
+    //     fee,
+    //     block.timestamp
+    // );
+}
+
+fn closePositionByOrderBook(mut self, _symbol: bytes32, _amount: u248, _acceptablePrice: u248, txMaker: Address)
+{
+    self.whenNotPaused();
+
+    self.doClosePosition(txMaker, _symbol, _amount, _acceptablePrice, false, false);
+}
+
+/**
+ * Close position triggerd by the position holder
+ */
+fn closePosition(mut self, _symbol: bytes32, _amount: u248, _acceptablePrice: u248, txMaker: Address)
+{
+    self.whenNotPaused();
+
+    self.doClosePosition(txMaker, _symbol, _amount, _acceptablePrice, false, false);
+}
+
+/**
+ * Close position triggerd by the designated closer
+ * Only used when the platform stops trading the symbol, but for some reason the holder
+ * does not or aren't able to close the position; the system designated closer can step in.
+ */
+fn closePositionByMaster(mut self, _holder: Address, _symbol: bytes32, _amount: u248) 
+{
+    // require(
+    //     ExternalContracts.get(DesignatedPositionCloser).0 == zksync::msg.sender,
+    //     "Is not allowd for zksync::msg.sender"
+    // );
+
+    require(
+        (self.SysTradeSymbolSettings.get(_symbol).0).isSupport == false,
+        "Not support for normal symbol"
+    );
+
+    self.doClosePosition(_holder, _symbol, _amount, 0 as u248, false, true);
+}
+
+fn compensateRiskFund(mut self, profit: i248, holder: Address)  -> i248 {
+    if (self.RiskFundDeposit >= 0)  {
+        profit
+    } else {
+        let r = match self.SysRatios.get(CompensateRatio).0 == 0 {
+                true => 10 as i248,
+                false => (self.SysRatios.get(CompensateRatio).0) as i248,
+            }; 
+        let subAmount: i248 = profit*(r)/(100);
+
+        let leftProfit = profit-(subAmount);
+        self.RiskFundDeposit = self.RiskFundDeposit+(subAmount);
+
+        leftProfit
+    }
+    // emit RiskFundChange(holder, subAmount, self.RiskFundDeposit, RiskFundChangeReason.ClosePositionIncoming);
+}
+
+// read the latest price, and use the cache price if possilbe
+fn readLatestPrice(mut self, symbol: bytes32) -> u248{
+    self.getPriceFromChainLink(symbol)
+}
+
+fn readCachedPrice(mut self, symbol: bytes32) -> u248 {
+    let price = self.CachedPrices.get(symbol);
+    if (price.0 != 0) {
+        price.0
+    } else {
+        self.readLatestPrice(symbol)
+    }
+}
+
+fn getSlippagedPrice(self, direction: i8, realPrice: u248) -> u248{
+    let ratio = self.SysRatios.get(SlippageRatio).0;
+    if (ratio == 0) {
+        realPrice
+    } else {
+        let slippaged = pmul(realPrice, ratio);
+        if (direction == LongDirection) { 
+            (realPrice as i248 - slippaged) as u248
+        } else {
+            (realPrice as i248 + slippaged) as u248
+        }
+    }
+}
+
+fn getExtraSlippagedPriceIf(self, direction: i8, realPrice: u248, holder: Address, symbol: bytes32) -> u248{
+    let ratio = self.SysRatios.get(SlippageRatio).0;
+
+    let mut slippaged = 0 as u248;
+    if (ratio != 0) {
+        slippaged = pmul(realPrice, ratio) as u248;
+    }
+
+    let lastModifiedAt = self.getB32FPTypesPosition((self.HolderPositions.get(holder).0), symbol).modifyBlock;
+    let blockNumber = 0 as u40;
+    let elasped = (blockNumber - lastModifiedAt) as u248;
+    let mut extraSlippaged = 0 as u248;
+    // TODO: correct type error
+
+    let ratiol0 = self.SysRatios.get(BlockCountForExtraSlippageLvl0).0 as u248;
+    let ratiol1 = self.SysRatios.get(BlockCountForExtraSlippageLvl1).0 as u248;
+    let ratiol2 = self.SysRatios.get(BlockCountForExtraSlippageLvl2).0 as u248;
+
+    if (elasped <= ratiol0) {
+        extraSlippaged = pmul(realPrice, ratiol0)  as u248;
+    } else if (
+        elasped > ratiol0 &&
+        elasped <= ratiol1)
+    {
+        extraSlippaged = pmul(realPrice, ratiol1)  as u248;
+    } else if (
+        elasped > ratiol1 &&
+        elasped <= ratiol2)
+    {
+        extraSlippaged = pmul(realPrice, ratiol2)  as u248;
+    }
+
+    slippaged = slippaged + (extraSlippaged);
+
+    if (direction == LongDirection) { 
+        (realPrice - slippaged) as u248
+    } else {
+        (realPrice + slippaged) as u248
+    }
+}
+
+fn doClosePositionPhaseI(mut self, 
+        holder: Address,
+        _symbol: bytes32,
+        _amount: u248,
+        _acceptablePrice: u248,
+        _isForceClose: bool
+)
+    ->(i8, u248)
+{
+    self.onlyExistPosition(holder, _symbol);
+    let position = self.getB32FPTypesPosition((self.HolderPositions.get(holder).0), _symbol);
+    // Do not allow the remaining unclosed amount < symbol's tradable minAmount
+    let minAmount = (self.SysTradeSymbolSettings.get(_symbol).0).minAmount;
+    if (position.amount as u248 < minAmount) {
+        require(position.amount as u248 == _amount, "Less position amount, must close all");
+    } else {
+        require(_amount >= minAmount, "Amount less than min amount");
+    }
+
+    let currentPrice: u248 = self.readLatestPrice(_symbol);
+
+    self.settleHolderInterest(holder, _symbol, currentPrice);
+    self.updateFomoInfo(holder);
+
+    let direction = position.direction;
+    let mut closePrice = 0 as u248;
+    // close price has a fixed spread from oracle feeding price
+
+    // TODO: fix this part
+    // let vipOrNot = self.VipTraders.get(holder).0;
+    // if vipOrNot {
+    //     // closePrice = currentPrice;
+    // }
+    // else {
+    //     // if (_isForceClose) {
+    //     //     closePrice = self.getSlippagedPrice(self.versusDirection(direction), currentPrice);
+    //     // } else {
+    //     //     closePrice = self.getExtraSlippagedPriceIf(self.versusDirection(direction), currentPrice, holder, _symbol);
+    //     // }
+    // }
+
+    // // Only for recording purpose of the slippage accmulation.
+    // if (currentPrice != closePrice) {
+    //     let priceDiff: u248 = match currentPrice > closePrice {
+    //         true => (currentPrice - closePrice),
+    //         false => (closePrice - currentPrice),
+    //     };
+    //     let riskFundIncoming =(priceDiff*(_amount)) as i248;
+    //     self.RiskFundDeposit = self.RiskFundDeposit+(riskFundIncoming);
+    //     // emit RiskFundChange(holder, riskFundIncoming, self.RiskFundDeposit, RiskFundChangeReason.SlipageIncoming);
+    // }
+
+    (direction, closePrice)
+}
+
+fn doClosePositionPhaseII(mut self, 
+    holder: Address,
+    _symbol: bytes32,
+    _amount: u248,
+    closePrice: u248,
+    direction: i8,
+    isAllowMultiTradesInOneBlock: bool
+)  -> (bool, u248, i248, i248) {
+
+    let (isClear,          // if all the position is cleared
+    mut holderProfit,    // trader's profit from this closing
+    buyPrice
+    ) = self.closeHolderPosition(holder, _symbol, _amount, closePrice, isAllowMultiTradesInOneBlock);
+
+    let (mut fee,_,_) = self.calculatePositionFeeWithCache(
+            _symbol,
+            _amount*(closePrice),
+            self.versusDirection(direction),
+            self.getStakedDftAmount(holder)
+    );
+
+    // TODO: fix this
+    // {
+    //     // holderGot: i248 = holderProfit;
+    //     let mut holderBalance: u248 = self.getB32U248(self.HolderPositionBalances.get(holder).0, _symbol);
+    //     if (holderProfit >= 0) { // trader has profit, move money from pool to trader
+    //         holderProfit = self.compensateRiskFund(holderProfit, holder);
+    //         self.subLiquid(abs(holderProfit));
+    //         self.addLedgerOfHolder(holder, _symbol, abs(holderProfit));
+    //     } else { // holderProfit < 0, trader has loss
+    //         let holderProfitAbs: u248 = abs(holderProfit);
+    //         if (holderProfitAbs >= holderBalance) { // loss is larger than trader's balance
+    //             self.addLiquid(holderBalance);    // take all the trader's balance
+    //             self.subLedgerOfHolder(holder, _symbol, holderBalance);
+    //             holderProfit = (-holderBalance) as i248;
+    //         } else { // loss is smaller than trader's balance, move money from trader to pool
+    //             self.addLiquid(holderProfitAbs);
+    //             self.subLedgerOfHolder(holder, _symbol, holderProfitAbs);
+    //         }
+    //     }
+    //     // Now let's see if the trader can pay off the transaction fee.
+    //     if (fee > 0) {
+    //         holderBalance = self.getB32U248(self.HolderPositionBalances.get(holder).0, _symbol);
+    //         if (holderBalance < abs(fee)) { // not enough balance, take all the trader's balance
+    //             fee = (holderBalance) as i248;
+    //         }
+    //         holderProfit = holderProfit-(fee);
+    //         self.subLedgerOfHolder(holder, _symbol, abs(fee));
+    //     }
+
+    //     // Distribute the charged fee.
+    //     // TODO
+    //     // self.depositFees(holder, fee);
+    // }
+    (isClear, buyPrice, holderProfit, fee)
+}
+
+fn doClosePositonPhaseIII(mut self, 
+    holder: Address,
+    _symbol: bytes32,
+    _amount: u248,
+    buyPrice: u248,
+    direction: i8,
+    isClear: bool,
+    isFroceClose: bool  
+)  {
+        // isAllCleared means all the position for this symbol are cleared, if so we can
+        // stop the global interest calculation.
+        let isAllCleared: bool = self.poolClosePosition(
+            _symbol,
+            _amount,
+            buyPrice,
+            direction,
+            isFroceClose
+        );
+
+        if (isAllCleared) {
+            self.stopGlobalInterestsRate(_symbol);
+        }
+
+        self.payOffInterest(holder, _symbol);
+        // If the trader's position is 0, then give him back his collateral
+        if (isClear) {
+            self.claimFeeAndInterestInternal(holder, _symbol, true);
+            self.drainBalanceOf(holder, _symbol);
+        }
+
+        // Trigger the distribution of transaction fee & interest if enough has been accumulated.
+        self.distributeLpFees();
+}
+
+fn doClosePosition(mut self, 
+    holder: Address,
+    _symbol: bytes32,
+    _amount: u248,
+    _acceptablePrice: u248,
+    isAllowMultiTradesInOneBlock: bool,  
+    isFroceClose: bool 
+    ) 
+{
+    let (direction, closePrice) = self.doClosePositionPhaseI(holder, _symbol, _amount, _acceptablePrice, isFroceClose);
+    let (isClear, buyPrice, holderGot, fee) = self.doClosePositionPhaseII(holder, _symbol, _amount, closePrice, direction, isAllowMultiTradesInOneBlock);
+    self.doClosePositonPhaseIII(holder, _symbol, _amount, buyPrice, direction, isClear, isFroceClose);
+
+    // TODO: 
+    // self.tradingMint(holder, closePrice*(_amount));
+
+    // emit ClosePosition(
+    //     holder,
+    //     _symbol,
+    //     _amount,
+    //     direction,
+    //     closePrice,
+    //     holderGot,
+    //     fee,
+    //     block.timestamp,
+    //     isClear
+    // );
+}
+
+/**
+ * Liquidation when holder's margin ratio is below ForceCloseMarginRatio
+ */
+fn forceClosePosition(mut self, 
+    _holder: Address,
+    _symbol: bytes32,
+    compAddr: [Address;10],
+    compSymbol: [bytes32;10]
+)
+{
+    self.whenNotPaused();
+    self.onlyExistPosition(_holder, _symbol);
+
+    let profit = self.doForceClosePosition(_holder, _symbol);
+
+    if (profit < 0) {
+        self.RiskFundDeposit = self.RiskFundDeposit+(profit);
+        // emit RiskFundChange(_holder, profit, self.RiskFundDeposit, RiskFundChangeReason.PositionOverLoss);
+
+        self.toBalancePool(compAddr, compSymbol);
+    }
+}
+
+fn doForceClosePosition(mut self, _holder: Address, _symbol: bytes32)  -> i248 {
+    let mut price = self.readLatestPrice(_symbol);
+
+    self.settleHolderInterest(_holder, _symbol, price);
+
+    let (ratio, profit, _) = self.getMarginRatioOf(_holder as i8, _symbol, price);
+    if (ratio >= self.SysRatios.get(ForceCloseMarginRatio).0) {
+        1 as i248 // positive number to indicate no more op need.
+    } else {
+        
+
+    // Trigger gets 50 USDT reward if there is enough left
+    let mut closerReward = self.SysRatios.get(ForceCloseRewardAmount).0;
+    // Take all the holder's balance
+    let mut leftValue = self.getB32U248(self.HolderPositionBalances.get(_holder).0, _symbol);;
+    let netprofit = profit+((leftValue) as i248);  
+    if (netprofit < 0) {  
+        self.addLiquid(leftValue);
+        closerReward = 0 as u248;
+        leftValue = 0 as u248;
+    } else {  
+        if (leftValue > closerReward) {
+            leftValue = leftValue-(closerReward);
+            self.addLiquid(leftValue);
+            self.RiskFundDeposit = self.RiskFundDeposit+((leftValue) as i248);
+            // emit RiskFundChange(_holder, i248(leftValue), self.RiskFundDeposit, RiskFundChangeReason.ForceCloseIncoming);
+        } else {
+            closerReward = leftValue;
+            leftValue = 0 as u248;
+        }
+        self.transferUsdtFromPerpetual(zksync::msg.sender, closerReward);
+    }
+
+    self.setB32U248(self.HolderPositionBalances.get(_holder).0, _symbol, 0 as u248);
+
+    let  holderPosition = self.getB32FPTypesPosition((self.HolderPositions.get(_holder).0), _symbol);
+    price = self.getSlippagedPrice(self.versusDirection(holderPosition.direction), price);
+
+    let isAllCleared = self.poolClosePosition(
+            _symbol,
+            holderPosition.amount as u248,
+            holderPosition.price as u248,
+            holderPosition.direction,
+            true);
+
+    if (isAllCleared) {
+        self.stopGlobalInterestsRate(_symbol);
+    }
+
+    // emit ForceClosePosition(
+    //     _holder,
+    //     _symbol,
+    //     holderPosition.amount,
+    //     holderPosition.price,
+    //     price,
+    //     holderPosition.direction,
+    //     ratio,
+    //     closerReward,
+    //     leftValue,
+    //     zksync::msg.sender,
+    //     block.timestamp
+    // );
+
+    // Just clear the position
+    // TODO
+    // self.HolderPositions.insert(_holder, self.setB32FPTypesPosition((self.HolderPositions.get(_holder).0), _symbol, 0));
+
+    netprofit
+    }
+}
+
+// FPInterestsg
+pub fn updateGlobalInterestsRate(mut self, symbol: bytes32, currentPrice: u248, blockNumber: u248)
+{
+    // period index = block.number / InterestPeriod
+    let index: u128 = div(blockNumber, (self.SysRatios.get(InterestPeriod).0)) as u128;
+    // skip if current period has been updated
+    if ((self.GlobalInterestIndex.get(symbol).0).next == index + 1) {
+        ()
+    }
+
+    // Compute the interest ratio for current period
+    let (rlong, rshort) = self.getInterestRateOfSymbolWithCache(symbol);
+
+    let rates = FPTypesRatesStruct{
+        longRatio: (rlong) as i32,
+        longRatioWithPrice: mul(rlong as u248, ((currentPrice) as u248)) as i96, //TODO: i248
+        shortRatio: (rshort) as i32,
+        shortRatioWithPrice: mul(rshort as u248, ((currentPrice) as u248)) as i96 //TODO: i248
+    };
+
+    let mut indexes = self.GlobalInterestIndex.get(symbol).0;
+
+    if (indexes.start == 0) {
+        // emit InterestRatioUpdate(
+                // symbol,
+                // index,
+                // index,
+                // rates.longRatioWithPrice,
+                // rates.shortRatioWithPrice,
+                // currentPrice);
+        self.setGlobalInterestRates(symbol, index, rates);
+        indexes.start = index;
+    } else {
+        let startIndex: u128 = indexes.next;
+        // emit InterestRatioUpdate(
+                // symbol,
+                // startIndex,
+                // index,
+                // rates.longRatioWithPrice,
+                // rates.shortRatioWithPrice,
+                // currentPrice);
+
+        // If the ratio for previous periods has not been updated, then fill
+    // them all with current interest ratio.
+        // for (i: u128 = index; i >= startIndex; i--) {
+        // for i in index..startIndex{
+        for i in 1..100{ //TODO
+            self.setGlobalInterestRates(symbol, i as u128, rates);
+        }
+    }
+
+    indexes.next = index + 1;
+
+    self.GlobalInterestIndex.insert(symbol, indexes);
+}
+
+pub fn settleHolderInterest(mut self, holder: Address, symbol: bytes32, currentPrice: u248)
+{
+    let  blockNumber: u248 = 0 as u248;
+    self.updateGlobalInterestsRate(symbol, currentPrice, blockNumber);
+
+    let startIndex = self.getB32U128(self.gUserInterestSettledIndex.get(holder).0, symbol);
+    let endIndex = (self.GlobalInterestIndex.get(symbol).0).next;
+    // do {
+    //     // If no exisiting position, then skip
+    //     if (HolderPositions.get(holder).0.get(symbol).0.amount == 0) break;
+
+    //     FPTypes.Position memory position = HolderPositions.get(holder).0.get(symbol).0;
+
+    //     // settle for all the previous pending periods
+    //     rate: i248;
+    //     for (i: u128 = startIndex; i < endIndex; i++) {
+    //         price: int96 = position.direction == ShortDirection ?
+    //                 GlobalInterestRates.get(symbol).0.rates.get(i).0.shortRatioWithPrice :
+    //                 GlobalInterestRates.get(symbol).0.rates.get(i).0.longRatioWithPrice;
+    //         rate = rate.add(i248(price));
+    //     }
+    //     if (rate == 0) break;
+
+    //     interests: i248 = rate.pmul(u248(position.amount));
+
+    //     // Since the interest could be refund, and for refund we don't transfer the USDT to
+    // // the user directly but instead record an IOU for user to claim in the future. We
+    // // also record a total IOU for all the users. The following code is to update the
+    // // total IOU after one user's IOU is changed.
+    //     interestAbs: u248 = interests.abs();
+    //     iouHolderAbs: u248 = self.IOUInterest.get(holder).0.abs();
+    //     if (self.IOUInterest.get(holder).0 < 0) {
+    //         if (interests < 0)
+    //             IOUInfo.iouTotalInterest = IOUInfo.iouTotalInterest.add(interestAbs);
+    //         else { // interests > 0
+    //             minAbs: u248 = Math.min(interestAbs, iouHolderAbs);
+    //             if (IOUInfo.iouTotalInterest >= minAbs)
+    //                 IOUInfo.iouTotalInterest = IOUInfo.iouTotalInterest.sub(minAbs);
+    //         }
+    //     } else if (self.IOUInterest.get(holder).0 == 0) {
+    //         if (interests < 0)
+    //             IOUInfo.iouTotalInterest = IOUInfo.iouTotalInterest.add(interestAbs);
+    //     } else { // self.IOUInterest.get(holder).0 > 0
+    //         if (interests < 0 && interestAbs > iouHolderAbs)
+    //             IOUInfo.iouTotalInterest = IOUInfo.iouTotalInterest.add(interestAbs).sub(iouHolderAbs);
+    //     }
+
+    //     self.IOUInterest.get(holder).0 = self.IOUInterest.get(holder).0.add(interests);
+
+    //     payOffInterest(holder, symbol);
+
+    //     // emit SettleHolderInterest(holder, symbol, startIndex, endIndex, interests);
+    // } while (false);
+
+    self.gUserInterestSettledIndex.insert(holder, self.setB32U128(self.gUserInterestSettledIndex.get(holder).0, symbol, endIndex));
+}
+
+/**
+ * Stop the global interest ratio update if all positions of that symbol are clear.
+ */
+pub fn stopGlobalInterestsRate(mut self, symbol: bytes32)
+{
+    self.GlobalInterestIndex.remove(symbol);
+}
+
+/**
+ * Actuall pay the interest out of holder's balance
+ */
+pub fn payOffInterest(mut self, holder: Address, symbol: bytes32)
+{
+    if (self.IOUInterest.get(holder).0 <= 0){
+        ()
+    }
+
+    let mut tmp = self.HolderPositionBalances.get(holder).0;
+    let mut tmp1 = self.getB32U248(tmp, symbol);
+
+    let mut interest = self.IOUInterest.get(holder).0;
+    if (interest > tmp1 as i248) {
+        self.depositInterest(tmp1);
+
+        self.IOUInterest.insert(holder,iSub(interest, tmp1 as i248));
+        self.setB32U248(self.HolderPositionBalances.get(holder).0, symbol, 0 as u248);
+    } else {
+        tmp = self.setB32U248(tmp, symbol, ((tmp1 as i248) - interest) as u248); //TODO: sub
+        self.HolderPositionBalances.insert(holder, tmp);
+
+        self.depositInterest(abs(self.IOUInterest.get(holder).0));
+        self.IOUInterest.insert(holder, 0 as i248);
+    }
+}
+
+pub fn calculatePositionFeeWithCache(
+    mut self, 
+    symbol: bytes32,
+    positionValue: u248,
+    direction: i8,
+    dftAmount: u248
+)
+    -> (i248, bool, bool)
+{
+    let (ratio, isPoolDisequilibrium, isWillShrinkOffset) =
+        self.getPositionFeeRatioWithCache(positionValue, direction, dftAmount);
+
+    let fee = pmul(ratio as u248, positionValue);
+    (fee, isPoolDisequilibrium, isWillShrinkOffset)
+}
+
+// FP query
+// ------------------------------------
+/**
+* Query holder's transaction fee & interest credit/debit
+* @return oweFees transaction fee credit
+* @return oweInterests + means holder owes platform interest; - means platform owes holder interest
+* @return iouTotalFees total transaction fee owed by LP to all traders
+* @return iouTotalInterest total interest owed by LP to all traders
+ */
+pub fn queryIOUFeesAndInterests(self, _holder: Address)
+                                -> (u248, i248, u248, u248)
+{
+    let oweFees = self.IOUFees.get(_holder).0;
+    let oweInterests = self.IOUInterest.get(_holder).0;
+    let iouTotalFees = self.IOUInfo.iouTotalFees;
+    let iouTotalInterest = self.IOUInfo.iouTotalInterest;
+    (oweFees, oweInterests, iouTotalFees, iouTotalInterest)
+}
+
+pub fn queryPosition(self, _holder: Address, symbol: bytes32)
+                     -> FPTypesPosition
+{
+    self.getB32FPTypesPosition((self.HolderPositions.get(_holder).0), symbol)
+}
+
+/**
+* Query the transaction fee and ratio
+* @param _symbol, trading symbol
+* @param _amount, trading amount to be placed
+* @param _direction, 1: Long Order, -1: Short Order
+* @param _isForOpen if the order is open or close position
+*/
+pub fn queryPositionFeeAndRatio(
+    self,
+    _symbol: bytes32,
+    _amount: u248,
+    _direction: i8,
+    _isForOpen: bool,
+)
+    -> (i248, i248, i248)
+{
+    let currentPrice: u248 = 0; //TODO: getPriceOf(_symbol);
+    let dir: i8 = match _isForOpen {
+        true => _direction,
+        false => self.versusDirection(_direction),
+    };
+
+    let mut openPrice = 0 as u248;
+    if (_isForOpen) {
+        openPrice = currentPrice;
+    } else {
+        // TODO: 
+        // openPrice = self.getSlippagedPrice(dir, currentPrice);
+    }
+
+    let positionValue = _amount * openPrice;
+    let (mut stakedDft, _, _) = self.getStakedDTokenInfo(zksync::msg.sender);
+    if (self.ExtraDiscount.get(zksync::msg.sender).0 == TraderWithExtraDiscount) {
+        let label = 1 << 128;
+        stakedDft = stakedDft | (label as u248);
+    }
+
+    let ratio = 0 as i248;
+    let oldratio = 0 as i248;
+
+    // TODO
+    // let (ratio, _,_) = self.getPositionFeeRatio(positionValue, dir, stakedDft);
+    // let (oldratio,_, _) = self.getPositionFeeRatio(positionValue, dir, 0);
+    let fee = ratio * ((positionValue) as i248) / ((PrecisionDecimals6) as i248);
+    (fee, ratio, oldratio)
+}
+
+/**
+ * Query the platform's transaction fee and interest pool info
+ */
+pub fn queryBalanceOfFees(self) -> FPTypesPositionFeeDeposit
+{
+    self.FeeDeposit
+}
+
+pub fn queryHolderInfo(mut self, _holder: Address, _symbol: bytes32)
+    -> (u248,u248,i248,u248)
+{
+    let balance = self.getB32U248(self.HolderPositionBalances.get(_holder).0, _symbol);
+
+    // let (mut marginRatio, mut profit, mut value) = (0 as u248, 0 as i248, 0 as u248);
+    let mut marginRatio = 0 as u248;
+    let mut profit = 0 as i248;
+    let mut value = 0 as u248;
+
+    // TODO
+    // if self.getB32FPTypesPosition(self.HolderPositions.get(_holder).0, _symbol).amount == 0 {
+        
+    // } else {
+    //     let currentPrice: u248 = 0 as u248; // TODO: getPriceOf(_symbol);
+    //     let tmp = self.getMarginRatioOf(_holder as i8, _symbol, currentPrice);
+    //     marginRatio = tmp.0;
+    //     profit = tmp.1;
+    //     value = tmp.2;
+    // }
+    (balance,marginRatio,profit,value)
+}
+
+pub fn queryFomoInfo(self, blocknum: u248) -> (Address, u248)
+{
+    (self.FomoTraderInfo.trader as Address, blocknum)
+}
+
+/**
+* Query the interest ratio
+* ->
+*   longRatio:   interest ratio for long position
+*   shortRatio:  interest ratio for short position
+*   price:       price to be used if using the above ratio
+*   index:       index number for the charging period. 0 for current period, -1 for the last period, ...
+ */
+pub fn queryInterestRatio(mut self, symbol: bytes32, index: i128, blockNumber: u248)
+                          -> (i248, i248, u128, u128)
+{
+    let currentIndex = (blockNumber / self.SysRatios.get(InterestPeriod).0) as u128;
+
+    let tmp = self.GlobalInterestIndex.get(symbol).0;
+    let updatedIndex = tmp.next - 1;
+
+    let targetIndex: u128 = currentIndex - (-index) as u128;
+
+    let (mut longRatio, mut shortRatio) = (0 as i248, 0 as i248);
+    //TODO: solve attempt to call a non-callable item `value unit '()'
+    // if true{
+    //     let a =1;
+    // }
+
+    // if (targetIndex > updatedIndex) {
+    //     // Generate a synthetic one
+    //     let tmp2 = self.getInterestRateOfSymbol(symbol);
+    //     longRatio = tmp2.0;
+    //     shortRatio = tmp2.1;
+    // } else {
+    //     // TODO: change to self.GlobalInterestRates[symbol]
+    //     longRatio = (self.GlobalInterestRatesETH.get(targetIndex).0).longRatio as i248;
+    //     shortRatio = (self.GlobalInterestRatesETH.get(targetIndex).0).shortRatio as i248;
+    // }
+    (longRatio, shortRatio, currentIndex, updatedIndex)
+}
+
+/**
+* Query the accumulated pending innterest
+* return
+*    positive value: the platform owes the holder interest
+*    negative value, the holder owes the platform interest
+ */
+pub fn queryPendingInterest(self, holder: Address, symbol: bytes32, blockNumber: u248) -> i248
+{
+    let tmp = self.HolderPositions.get(holder).0;
+    let pos = self.getB32FPTypesPosition(tmp, symbol);
+
+
+
+    if (pos.amount == 0) {
+        0 as i248
+    } else {
+        let tmp2 = self.gUserInterestSettledIndex.get(holder).0;
+        let startIndex = self.getB32U128(tmp2, symbol);
+
+        let updatedIndex: u128 = (self.GlobalInterestIndex.get(symbol).0).next;
+
+        let position = pos;
+        let currentIndex: u128 = (blockNumber / (self.SysRatios.get(InterestPeriod).0)) as u128;
+
+        let mut interest = 0 as i248;
+        if (currentIndex > updatedIndex) {
+            let price: u248 = 0 as u248;  // TODO: getPriceOf(symbol);
+            let (longRatio, shortRatio) = (0 as i248, 0 as i248); //TODO: self.getInterestRateOf();
+
+            let base: i248 = (price as i248) * ((currentIndex - updatedIndex) as i248);
+            interest = match position.direction == ShortDirection {
+                true => shortRatio * ((base) as i248) / ((PrecisionDecimals6) as i248),
+                _ => longRatio * ((base) as i248) / ((PrecisionDecimals6) as i248),
+            };
+        }
+
+        //TODO: startIndex..updatedIndex
+        let mut rate = 0 as i248;
+        for i in 1..100 {
+            let price: i96 = match position.direction == ShortDirection {
+                true => {
+                    match symbol {
+                        0 => (self.GlobalInterestRatesETH.get(i as u128).0).shortRatioWithPrice,
+                        _ => (self.GlobalInterestRatesUSDT.get(i as u128).0).shortRatioWithPrice,
+                    }
+                },
+                _ => {
+                    match symbol {
+                        0 => (self.GlobalInterestRatesETH.get(i as u128).0).longRatioWithPrice,
+                        _ => (self.GlobalInterestRatesUSDT.get(i as u128).0).longRatioWithPrice,
+                    }
+                }
+            };
+            rate = rate + ((price) as i248);
+        }
+
+        rate * ((position.amount) as i248) / ((PrecisionDecimals6) as i248) + (interest)
+    }
+}
+
+pub fn queryExtraDiscount(self, trader: Address) -> u8 {
+    self.ExtraDiscount.get(trader).0
+}
+
+// FPPOsition
+fn getHolderPositionBalances(mut self, symbol: bytes32, holder: Address) -> u248 {
+    let val = match symbol {
+        0 => self.ETHHolderPositionBalances.get(holder).0,
+        1 => self.BTCHolderPositionBalances.get(holder).0,
+        2 => self.USDTHolderPositionBalances.get(holder).0,
+        3 => self.UNIHolderPositionBalances.get(holder).0,
+        _ => self.ETHHolderPositionBalances.get(holder).0,
+    };
+    val
+}
+
+fn getRates(mut self, symbol: bytes32, i: u128) -> FPTypesRatesStruct {
+    let val = match symbol {
+        0 => self.ETHRates.get(i).0,
+        1 => self.BTCRates.get(i).0,
+        2 => self.USDTRates.get(i).0,
+        3 => self.UNIRates.get(i).0,
+        _ => self.ETHRates.get(i).0,
+    };
+    val
+}
+
+fn getUserInterestSettledIndex(mut self, holder: Address, symbol: i8) -> u128 {
+    let val = match symbol {
+        0 => self.ETHgUserInterestSettledIndex.get(holder).0,
+        1 => self.BTCgUserInterestSettledIndex.get(holder).0,
+        2 => self.USDTgUserInterestSettledIndex.get(holder).0,
+        3 => self.UNIgUserInterestSettledIndex.get(holder).0,
+        _ => self.ETHgUserInterestSettledIndex.get(holder).0,
+    };
+    val
+}
+
+fn openHolderPosition(mut self, holder: Address, symbol: bytes32, amount: u248, openPrice: u248, direction: i8, disallowInOneBlock: bool) {
+    if (disallowInOneBlock) {
+        require(self.getB32FPTypesPosition(self.HolderPositions.get(holder).0, symbol).modifyBlock != BLOCK_NUMBER as u40, "Can Not Do It In Same Block");
+    };
+
+    //require(amount < type(uint104).max && openPrice < type(uint104).max,"amount or price overflow.");
+
+    let newp = FPTypesPosition {
+        amount: amount as u104,
+        price: openPrice as u104,
+        modifyBlock: BLOCK_NUMBER as u40,
+        direction: direction,
+    };
+
+    let mut HolderPositions = self.getPoolPositionMap(symbol, direction);
+    HolderPositions = self.mergePosition(newp, HolderPositions);
+
+    if (self.MaxPositionAmount.get(symbol).0 != 0) {
+        require(HolderPositions.amount as u248 <= self.MaxPositionAmount.get(symbol).0, "Position amount over max allowed",
+        );
+    }
+    //(uint256 ratio,,) = getMarginRatioOf(holder, symbol, openPrice);
+}
+
+fn closeHolderPosition(mut self, owner: Address, symbol: bytes32, amount: u248, closePrice: u248, isAllowMultiTradesInOneBlock: bool) -> (bool, i248, u248) {
+    let mut makedPosition = self.getPoolPositionMap(owner as u8, symbol as i8);
+
+    if isAllowMultiTradesInOneBlock {
+        require(makedPosition.modifyBlock != BLOCK_NUMBER as u40, "Can Not Do It In Same Block");
+    }
+    let makedAmount = makedPosition.amount as u248;
+
+    require(makedAmount >= amount, "Amount Overflow");
+
+    let mut isClear: bool = false;
+    if amount == makedAmount {
+        isClear = true;
+    } else {
+        isClear = false;
+    };
+
+    let buyPrice = makedPosition.price;
+
+    makedPosition.amount = amount as u104;
+
+    let proValue = self.calProfitAndValue(makedPosition, closePrice);
+
+    let profit = proValue.0;
+
+    if (amount == makedAmount) {
+        makedPosition.amount = 0 as u104;
+        self.insertPoolPositionMap(symbol, owner as i8, makedPosition);
+    } else {
+        makedPosition.modifyBlock = BLOCK_NUMBER as u40;
+        makedPosition.amount = makedAmount as u104 - amount as u104;
+        self.insertPoolPositionMap(symbol, owner as i8, makedPosition);
+    };
+
+    (isClear, profit, buyPrice as u248)
+}
+
+fn getMarginRatioOf(mut self, holder: i8, symbol: bytes32, currentPrice: u248) -> (u248, i248, u248) {
+    let mut position = self.getPoolPositionMap(symbol, holder);
+
+    let mut proValue = self.calProfitAndValue(position, currentPrice);
+    let totalProfit = proValue.0;
+    let totalValue = proValue.1;
+
+    if totalValue == 0 {
+        (MAX_ENOUGH_MARGIN, totalProfit, totalValue);
+    }
+    let startIndex = self.getUserInterestSettledIndex(holder as u160, symbol as i8);
+    let mut updated = self.GlobalInterestIndex.get(symbol).0;
+    let mut updatedIndex = updated.next;
+    let mut rate: u248 = 0;
+//  for i in startIndex..updatedIndex
+    for i in 0..100 {
+        let mut price: i96 = 0;
+        if position.direction == ShortDirection {
+            let outPrice = self.getRates(symbol, i as u128);
+            price = outPrice.shortRatioWithPrice;
+        } else {
+            let outPrice = self.getRates(symbol, i as u128);
+            price = outPrice.longRatioWithPrice;
+        }
+        rate = add(rate as u248, price as u248);
+    };
+
+    let mut interest: i248 = 0;
+    if (rate > 0) {
+        interest = pmul(rate, position.amount as u248);
+    };
+    if (self.IOUInterest.get(holder as u160).0 > 0) {
+        interest = add(interest as u248, self.IOUInterest.get(holder as u160).0 as u248) as i248;
+    };
+    let balance = add(sub(totalProfit as u248, interest as u248), self.getHolderPositionBalances(holder as u8, symbol as u160));
+
+    let ratio = self.pdiv(balance, totalValue);
+
+    (ratio, totalProfit, totalValue)
+}
+
+// PositionUtil
+/**
+* Merge two positions and update the average cost
+* P0:  cost of existing position, A0: amount of existing position
+* P1:  cost of new position, A1: amount of new position
+* P:   current feeding price
+* Px:  average cost after merging
+* (P - P0) * A0 + (P - P1) * A1 = (P - Px) * (A0 + A1)
+*
+* => Px = (A0 * P0 + A1 * P1) / (A0 + A1);
+*
+ */
+fn mergePosition(self, mut newp: FPTypesPosition, oldp: FPTypesPosition)
+                 -> FPTypesPosition
+{
+    if (oldp.amount != 0) {
+        require(newp.direction == oldp.direction, "MergePosition: Different Direction");
+
+        let P0: u248 = oldp.price;
+        let A0: u248 = oldp.amount;
+        let P1: u248 = newp.price;
+        let A1: u248 = newp.amount;
+
+        let A01: u248 = A0+(A1);
+        let PA0: u248 = P0*(A0);
+        let PA1: u248 = P1*(A1);
+        let Px: u248 = (PA0+PA1)/(A01);
+        
+        // type(u104).max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFF
+        require(
+            A01 < 0xFFFFFFFFFFFFFFFFFFFFFFFFFF && Px < 0xFFFFFFFFFFFFFFFFFFFFFFFFFF,
+            "amount or price overflow."
+        );
+        
+        newp.amount = (A01) as u104;
+        newp.price = (Px) as u104;
+    }
+
+    newp
+}
+
+fn calProfitAndValue(self, position: FPTypesPosition, currentPrice: u248)
+                     -> (i248, u248)
+{
+    let L: i248 = (position.direction) as i248;
+    let P: i248 = (currentPrice) as i248;
+    let P0: i248 = (position.price) as i248;
+    let A0: i248 = (position.amount) as i248;
+
+    let profit = (P - P0) * (A0) * (L);
+    let value = abs(P * (A0));
+    (profit, value)
+}
+
+fn versusDirection(self, originDir: i8) ->i8 {
+    if originDir == 1 {
+        -1 
+    } else if originDir == -1 {
+        1 as i8
+    } else {
+        require(false, "Unsupport Position Direction"); 
+        0 as i8
+    }
+}
+
+// FP deposit
+/**
+ * Trader deposits, needed when the margin ratio of holding position is low
+ */
+pub fn deposit(mut self, _symbol: bytes32, _usdtAmount: u248)
+{
+    self.whenNotClearing();;
+
+    self.onlySupportSymbol(_symbol);
+    self.transferUsdtToPerpetual(zksync::msg.sender, _usdtAmount);
+    self.addLedgerOfHolder(zksync::msg.sender, _symbol, _usdtAmount);
+    // emit Deposit(msg.sender, _symbol, _usdtAmount);
+}
+
+/**
+ * Trader withdraw, when there are enough realized profit
+ */
+pub fn withdraw(mut self, _symbol: bytes32, _usdtAmount: u248)
+{
+    self.whenNotPaused();;
+
+    // Pay off the owned interest if there is any
+    // TODO
+    // FPInterests.payOffInterest(msg.sender, _symbol);
+
+    // Help to trigger the distribution of transaction fee and interest
+    // FPDistribute.distributeLpFees();
+
+    self.subLedgerOfHolder(zksync::msg.sender, _symbol, _usdtAmount);
+
+    // After the withdraw, must meet the maintain margin ratio
+    let tmp = self.HolderPositions.get(zksync::msg.sender).0;
+    let pos = self.getB32FPTypesPosition(tmp, _symbol);
+    if (pos.amount != 0) {
+        // TODO:
+        // let currentPrice = readLatestPrice(_symbol);
+        // let (marginRatio,,) = getMarginRatioOf(zksync::msg.sender, _symbol, currentPrice);
+
+        let marginRatio = 0 as u248;
+        require(
+            marginRatio > self.SysRatios.get(MaintainMarginRatio).0,
+            "Lower than Maintain Margin Ratio",
+        );
+    }
+    // transfer USDT to the trader
+    self.transferUsdtFromPerpetual(zksync::msg.sender, _usdtAmount);
+
+    // emit Withdraw(msg.sender, _symbol, _usdtAmount);
+}
+
+/**
+ * LP deposits to the pool
+ */
+// TODO: onlyEOA?
+pub fn depositToPool(mut self, _usdtAmount: u248)
+{
+    self.whenNotClearing();
+
+    // min amount is 100 USDT
+    let minRequire: u248 = match self.SysRatios.get(MinDepositToPoolAmount).0 == 0 
+    {
+        true => 1E8 as u248,
+        _ => self.SysRatios.get(MinDepositToPoolAmount).0,
+    };
+    require(_usdtAmount >= minRequire /*100*10**6*/, "Too Less USDT");
+
+    let isFirstMint: bool = self.isFirstMint();
+    // For first mi, the same amount as _usdtAmount of LP Token is mied; otherwise
+    // the amount of LP Token mied is according to
+    // (_usdtAmount / (LP Pool Balnace + LP Pool P/L)) * LP Token Total Supply
+    let mut ratio = 0 as u248;
+    if (isFirstMint) {
+        ratio = PrecisionDecimals18 as u248;
+        self.mint(zksync::msg.sender, PrecisionDecimals18, _usdtAmount); 
+    } else {
+        ratio = self.getRatioByUsdtAmountInner(_usdtAmount);
+        require(ratio > 0, "Too less USDT deposited");
+        self.mint(zksync::msg.sender, ratio, _usdtAmount);
+    }
+
+    self.transferUsdtToPerpetual(zksync::msg.sender, _usdtAmount);
+    self.addLiquid(_usdtAmount);
+    // emit DepositToPool(zksync::msg.sender, _usdtAmount, ratio);
+
+    // to balance risk fund
+    if (self.RiskFundDeposit > 0) {
+        let subRiskFund = self.RiskFundDeposit*((ratio) as i248)/((PrecisionDecimals18) as i248);
+        self.RiskFundDeposit += (subRiskFund);
+        // emit RiskFundChange(msg.sender, subRiskFund, RiskFundDeposit, RiskFundChangeReason.DepositToPoolIncoming);
+    }
+}
+
+/**
+ * Deposit USDT io pool without miing LP Token
+ */
+pub fn healPool(mut self, _usdtAmount: u248)
+{
+    self.transferUsdtToPerpetual(zksync::msg.sender, _usdtAmount);
+    self.addLiquid(_usdtAmount);
+    // emit HealPool(zksync::msg.sender, _usdtAmount, block.timestamp);
+}
+
+/**
+ * LP takes back his portion of USDT by burning LP Token
+ */
+pub fn withdrawFromPool(mut self, _lpTokenAmount: u248)
+{
+    self.whenNotPaused();
+
+    // ILpTokenWrapper wrapper = ILpTokenWrapper(ExternalContracts.get(LpTokenWrapperAddress).0);
+    let ratio: u248 = self.getRatioOf(LP_TOKEN_ADDRESS_INDEX, zksync::msg.sender, _lpTokenAmount);
+    require(ratio != 0, "Too small amount");
+
+    self.burn(zksync::msg.sender, _lpTokenAmount);
+
+    let withdrawAmount: u248 = 0 as u248; // TODO: self.getUsdtAmountByRatioInner(ratio);
+
+    let fee: u248 = self.SysRatios.get(WithdrawFromLpRatio).0 * (withdrawAmount)/(PrecisionDecimals6);
+    let takeOutAmount: u248 = withdrawAmount-(fee);
+
+    self.transferUsdtFromPerpetual(zksync::msg.sender, takeOutAmount);
+
+    self.withdrawPool(takeOutAmount);
+    self.distributeLpFees();
+
+    // emit WithdrawFromPool(zksync::msg.sender, takeOutAmount, _lpTokenAmount);
+}
+
+pub fn claimReserved(mut self)  {
+    self.whenNotPaused();
+
+    require(zksync::msg.sender == self.ExternalContracts.get(ReservedClaimer).0, "Not Claimer");
+    self.transferUsdtFromPerpetual(zksync::msg.sender, self.FeeDeposit.reserved);
+    self.FeeDeposit.reserved = 0 as u248;
+}
+
+/**
+ * Distribute the accumulated transaction fee & interest to LP & DFT staker
+ */
+pub fn distributeFeesOfLP(mut self)  {
+    self.whenNotPaused();
+    self.distributeLpFees();
+}
+
+// FPSharePool
+fn depositFees(mut self, holder: Address, fee: i248) {
+    let mut incomingFee = abs(fee);
+    if (fee > 0) {
+        if self.FeeDeposit.lpFees >= self.IOUInfo.iouTotalFees {
+            self.FeeDeposit.lpFees = add(pmul(incomingFee, self.SysRatios.get(DistributeFeeLpRatio).0) as u248, self.FeeDeposit.lpFees);
+            self.FeeDeposit.reserved = add(pmul(incomingFee, self.SysRatios.get(DistributeResrevedRatio).0) as u248, self.FeeDeposit.reserved as u248);
+            self.FeeDeposit.reserved1 = add(pmul(incomingFee, self.SysRatios.get(DistributeResreved1Ratio).0) as u248, self.FeeDeposit.reserved1 as u248);
+        } else {
+            self.FeeDeposit.lpFees = add(self.FeeDeposit.lpFees, incomingFee);
+        }
+    }
+
+    if (fee == 0) {
+        // nop
+    } else {
+        let mut iou = self.IOUFees.get(holder).0;
+        iou = add(iou, abs(fee));
+        self.IOUFees.insert(holder, iou);
+    }
+}
+
+fn depositInterest(mut self, incomingInterest: u248) {
+    if self.FeeDeposit.lpInterest >= self.IOUInfo.iouTotalInterest {
+        self.FeeDeposit.lpInterest = add(pmul(incomingInterest, self.SysRatios.get(DistributeFeeLpRatio).0) as u248, self.FeeDeposit.lpInterest);
+        self.FeeDeposit.reserved = add(pmul(incomingInterest, self.SysRatios.get(DistributeResrevedRatio).0) as u248, self.FeeDeposit.reserved);
+        self.FeeDeposit.reserved1 = add(pmul(incomingInterest, self.SysRatios.get(DistributeResreved1Ratio).0) as u248, self.FeeDeposit.reserved1);
+    } else {
+        self.FeeDeposit.lpInterest = add(self.FeeDeposit.lpInterest, incomingInterest);
+    }
+}
+
+fn distributableLpFeeInterestAmount(mut self) -> (u248, u248) {
+    let minShareAmount = self.SysRatios.get(LpFeeMinShareAmount).0;
+    let a = add(self.IOUInfo.iouTotalFees, minShareAmount);
+
+    if self.FeeDeposit.lpFees > a {
+        let shareFee = sub(self.FeeDeposit.lpFees, self.IOUInfo.iouTotalFees);
+        self.FeeDeposit.lpFees = self.IOUInfo.iouTotalFees;
+
+        (shareFee as u248, self.FeeDeposit.lpFees);
+    };
+
+
+    let b = add(self.IOUInfo.iouTotalInterest, minShareAmount);
+
+    if self.FeeDeposit.lpInterest > b {
+        let shareInterest = sub(self.FeeDeposit.lpInterest, self.IOUInfo.iouTotalInterest);
+        self.FeeDeposit.lpInterest = self.IOUInfo.iouTotalInterest;
+
+        (shareInterest as u248, self.FeeDeposit.lpInterest);
+    };
+
+    (0 as u248,0 as u248)
+}
+
+fn canClaimIOUFeesAmount(mut self,holder:Address)->u248{
+   let mut claimableAmount = self.IOUFees.get(holder).0;
+   if claimableAmount > self.FeeDeposit.lpFees{
+     claimableAmount=0 as u248;
+   }else{
+    self.FeeDeposit.lpFees  = sub(self.FeeDeposit.lpFees,claimableAmount);
+    self.IOUInfo.iouTotalFees = sub(self.IOUInfo.iouTotalFees,claimableAmount);
+   //delete IOUFees[holder];
+   }
+   claimableAmount
+}
+
+fn canClaimInterestAmount(mut self,holder:Address)->u248{
+   let oweAmount = self.IOUInterest.get(holder).0;
+   if oweAmount >= 0 {
+     0 as u248;
+   }
+
+   if (abs(oweAmount) > self.FeeDeposit.lpInterest) {0 as u248;};
+
+   self.FeeDeposit.lpInterest=sub(self.FeeDeposit.lpInterest,abs(oweAmount));
+
+   self.IOUInfo.iouTotalInterest =  sub(self.IOUInfo.iouTotalInterest,abs(oweAmount));
+
+   self.IOUInterest.insert(holder,0 as i248);
+
+   abs(oweAmount)
+}
+
+fn updateFomoInfo(mut self,trader:Address){
+   let mut gap:u96 = 0;
+   if self.SysRatios.get(FomoBlocksCount).0==0 as u248 {
+      gap=150 as u96;
+   }else{
+      gap = self.SysRatios.get(FomoBlocksCount).0 as u96
+   }
+
+   let num = BLOCK_NUMBER - self.FomoTraderInfo.blocknum as u248;
+   if num >= gap as u248 && self.FomoTraderInfo.trader != 0 {
+      // address winner = FomoTraderInfo.trader;
+
+      // emit WinFomoRewards(winner);
+
+      // address lptokenwrapper = ExternalContracts[LpTokenWrapperAddress];
+
+      // // Notify LpTokenWrapper to reward the winner for the DFT FOMO pool.
+      // ILpTokenWrapper lpWrapper = ILpTokenWrapper(lptokenwrapper);
+      // lpWrapper.claimFomoToken(winner);
+   }
+   self.FomoTraderInfo.trader = trader;
+   self.FomoTraderInfo.blocknum = BLOCK_NUMBER as u96;
+}
+
+// FPDistribute
+fn distributeLpFees(mut self) {
+    let (shareFee, shareInterest) = (0 as u248, 0 as u248); //TODO: self.arePool.distributableLpFeeInterestAmount();
+    let shareAmount: u248 = shareFee+(shareInterest);
+    if (shareAmount == 0) {
+        ()
+    } else {
+        self.transferUsdtFromPerpetual(self.ExternalContracts.get(LpTokenWrapperAddress).0, shareAmount);
+
+        // Notify LpTokenWrapper to distribute the USDT reward to LP & DFT stakers
+        self.distributeUsdtByFees(shareAmount);
+        // // emit DistributeLpFees(shareFee, shareInterest);
+    }
+}
+
+// fixed array size=10
+pub fn setRelationForce(mut self, children: [Address; 10], parents: [Address; 10]) {
+    self.onlyAdmin();
+
+    for i in 0..10 {
+        self.RelationMap.insert(children[i], parents[i]);
+    }
+    // emit RelationArray(children, parents);
+}
+
+fn isSpecialPool(self, poolIndex: u248) -> bool {
+    poolIndex == TRADER_POOL_INDEX
+        || poolIndex == PARTNER_POOL_INDEX
+        || poolIndex == FOMO_POOL_INDEX
+        || poolIndex == DYNAMIC_POOL_INDEX
+        || poolIndex == AIRDRO_PPOOL_INDEX
+        || poolIndex == COMMUNITY_POOL_INDEX
+}
+
+fn settleAllIssuePool(mut self) {
+    for poolIndex in 0..POOL_INFO_LIST_LENGTH {
+        let poolInfo = self.PoolInfoList.get(poolIndex).0;
+        if (poolInfo.stakeType == STAKE_TYPE_ISSUE && !self.isSpecialPool(poolIndex)) {
+            let issuedDTokens = self.getIssuedDTokenFromLastToNow(poolIndex, BLOCK_NUMBER);
+            self.updatePoolInfo(poolIndex, issuedDTokens, true);
+        }
+    }
+
+    // TODO: uncomment these
+    self.claimSpecialPool(TRADER_POOL_INDEX);
+    self.claimSpecialPool(PARTNER_POOL_INDEX);
+    self.claimSpecialPool(AIRDRO_PPOOL_INDEX);
+    self.claimSpecialPool(DYNAMIC_POOL_INDEX);
+    self.claimSpecialPool(COMMUNITY_POOL_INDEX);
+    self.claimFomoToSelf();
+}
+
+pub fn adjustPoolParam(
+    mut self,
+    poolIndexes: [u248; POOL_INFO_LIST_LENGTH + 1],
+    newAllocPoints: [u248; POOL_INFO_LIST_LENGTH + 1],
+) {
+    self.onlyAdmin();
+
+    self.settleAllIssuePool();
+
+    let mut IssueTotalAllocPoint: u248 = 0;
+    let mut RebateAllocPoint: u248 = 0;
+
+    for i in 0..POOL_INFO_LIST_LENGTH {
+        let mut poolInfo = self.PoolInfoList.get(i).0;
+        if (poolInfo.stakeType == STAKE_TYPE_ISSUE) {
+            IssueTotalAllocPoint = sub(IssueTotalAllocPoint, poolInfo.allocPoint);
+            IssueTotalAllocPoint = add(IssueTotalAllocPoint, newAllocPoints[i]);
+            poolInfo.allocPoint = newAllocPoints[i];
+        } else {
+            RebateAllocPoint = sub(RebateAllocPoint, poolInfo.allocPoint);
+            RebateAllocPoint = add(RebateAllocPoint, newAllocPoints[i]);
+            poolInfo.allocPoint = newAllocPoints[i];
+        }
+        self.PoolInfoList.insert(i, poolInfo);
+    }
+}
+
+// Dtoken 
+pub fn getUserInfo(self, poolIndex: u248, owner: Address) -> UserInfo {
+    let val = match poolIndex {
+        0 => self.PoolHolderUserInfoLpToken.get(owner),
+        1 => self.PoolHolderUserInfoTrader.get(owner),
+        2 => self.PoolHolderUserInfoPartner.get(owner),
+        3 => self.PoolHolderUserInfoFomo.get(owner),
+        4 => self.PoolHolderUserInfoDynamic.get(owner),
+        5 => self.PoolHolderUserInfoAirdrop.get(owner),
+        6 => self.PoolHolderUserInfoCommunity.get(owner),
+        7 => self.PoolHolderUserInfoLpTokenRebate.get(owner),
+        8 => self.PoolHolderUserInfoDTokenRebate.get(owner),
+
+        _ => self.PoolHolderUserInfoLpToken.get(owner),
+    };
+
+    val.0
+}
+
+pub fn UpdateUserInfo(mut self, poolIndex: u248, owner: Address, userinfo: UserInfo) {
+    match poolIndex {
+        0 => self.PoolHolderUserInfoLpToken.insert(owner, userinfo),
+        1 => self.PoolHolderUserInfoTrader.insert(owner, userinfo),
+        2 => self.PoolHolderUserInfoPartner.insert(owner, userinfo),
+        3 => self.PoolHolderUserInfoFomo.insert(owner, userinfo),
+        4 => self.PoolHolderUserInfoDynamic.insert(owner, userinfo),
+        5 => self.PoolHolderUserInfoAirdrop.insert(owner, userinfo),
+        6 => self.PoolHolderUserInfoCommunity.insert(owner, userinfo),
+        7 => self.PoolHolderUserInfoLpTokenRebate.insert(owner, userinfo),
+        8 => self.PoolHolderUserInfoDTokenRebate.insert(owner, userinfo),
+
+        _ => self.PoolHolderUserInfoLpToken.insert(owner, userinfo),
+    };
+}
+
+fn getPoolTokenAmount(self, poolIndex: u248) -> u248 {
+    let pool = self.PoolInfoList.get(poolIndex).0;
+
+    // MixedMath?
+    add(pool.amount, self.accelerateSummary.vTokenAmount)
+    // pool.amount + self.accelerateSummary.vTokenAmount
+}
+
+fn getOwnerTokenAmount(self, who: Address, poolIndex: u248) -> u248 {
+    let rawAmount: u248 = self.getUserInfo(poolIndex, who).amount;
+
+    let tmp = self.AccelerateSummaryMap.get(who).0;
+    add(rawAmount, tmp.vTokenAmount)
+}
+
+fn getWorkIndex(self, blockNumber: u248) -> u248 {
+    let mut index: u248 = 0;
+
+    // set a upperbound(max length for DTokenIssueRateArray) for the while
+    for i in 0..100
+    while self.DTokenIssueRateArray.get(index).1 {
+        let tmp = self.DTokenIssueRateArray.get(index).0;
+        if (tmp.checkpoint <= blockNumber) {
+            index
+        } else {
+            index + 1
+        };
+        index = index + 1
+    }
+
+    if self.DTokenIssueRateArray.get(index).1 {
+        0 as u248
+    } else {
+        index
+    }
+}
+
+// LPToken
+pub fn getPoolUserInfo(self, user: Address, poolIndex: u248) -> (u248, u248) {
+    let userAmount: u248 = self.getUserInfo(poolIndex, user).amount;
+
+    let poolInfo = self.PoolInfoList.get(poolIndex).0;
+    let amount: u248 = poolInfo.amount;
+    (userAmount, amount)
+}
+
+pub fn getStakedLpTokenInfo(self, user: Address) -> (u248, u248) {
+    self.getPoolUserInfo(user, LP_TOKEN_POOL_INDEX)
+}
+
+pub fn getLpTokenInfoWithAccelerate(self, user: Address) -> (u248, u248, u248, u248) {
+    let (userLpToken, totalLpToken) = self.getPoolUserInfo(user, LP_TOKEN_POOL_INDEX);
+    // let summary = self.AccelerateSummaryMap.get(LP_TOKEN_POOL_INDEX).0;
+    let summary = self.accelerateSummary;
+    let userInfo = self.AccelerateSummaryMap.get(user).0;
+    let actualVLpToken: u248 = userInfo.vTokenAmount;
+    let totalVLpToken: u248 = summary.vTokenAmount;
+    (
+        add(userLpToken, actualVLpToken),
+        add(totalLpToken, totalVLpToken),
+        actualVLpToken,
+        totalVLpToken,
+    )
+}
+
+pub fn getStakedDTokenInfo(self, user: Address) -> (u248, u248, u248) {
+    let (userAmount, total) = self.getPoolUserInfo(user, D_TOKEN_REBATE_POOL_INDEX);
+
+    let userInfo = self.getUserInfo(LP_TOKEN_POOL_INDEX, user);
+    let deadline: u248 = userInfo.deadline;
+    (userAmount, total, deadline)
+}
+
+pub fn getAccelerateInfo(self, user: Address) -> (u248, u248, u248, u248) {
+    let summary = self.accelerateSummary;
+    let userInfo = self.AccelerateSummaryMap.get(user).0;
+    let dTokenAmount: u248 = userInfo.dTokenAmount;
+    let deadline: u248 = userInfo.deadline;
+    let actualVLpToken: u248 = userInfo.vTokenAmount;
+    let (lptoken, tmp) = self.getPoolUserInfo(user, LP_TOKEN_POOL_INDEX);
+    (dTokenAmount, deadline, actualVLpToken, lptoken)
+}
+
+// Dtoken, stake DToken(DFT) to earn fee (usdt)
+pub fn stakeDToken(mut self, amount: u248) {
+    let mut userInfo = self.getUserInfo(D_TOKEN_REBATE_POOL_INDEX, zksync::msg.sender);
+
+    let now = 0 as u248;
+    userInfo.deadline = now + 3 * TS_PER_DAY;
+    self.UpdateUserInfo(D_TOKEN_REBATE_POOL_INDEX, zksync::msg.sender, userInfo);
+
+    self.updateFeePoolUserInfo(D_TOKEN_ADDRESS_INDEX, zksync::msg.sender, amount, true);
+
+    self.transfer(
+        zksync::msg.sender,
+        self.AddressMap.get(D_TOKEN_ADDRESS_INDEX).0,
+        amount,
+    ); // replace 0x0 with usdt erc20 address
+    // emit StakeDToken(msg.sender, amount);
+}
+
+pub fn unstakeDToken(mut self, amount: u248) {
+    let mut userInfo = self.getUserInfo(D_TOKEN_REBATE_POOL_INDEX, zksync::msg.sender);
+
+    let now = 0 as u248;
+    require(now > userInfo.deadline, "deadline not reach");
+
+    self.updateFeePoolUserInfo(D_TOKEN_REBATE_POOL_INDEX, zksync::msg.sender, amount, false);
+    self.transfer(
+        zksync::msg.sender,
+        self.AddressMap.get(D_TOKEN_ADDRESS_INDEX).0,
+        amount,
+    ); // replace 0x0 with usdt erc20 address
+    // emit UnstakeDToken(msg.sender, amount);
+}
+
+// uni
+pub fn stakeUni(mut self, amount: u248, poolIndex: u248) {
+    require(amount > 0, "amount is 0");
+    let uniAddrIndex = self.getUniAddressIndex(poolIndex);
+    require(self.AddressMap.get(uniAddrIndex).0 != 0 as Address, "UNI address not set");
+    self.stake(poolIndex, zksync::msg.sender, amount);
+
+    // TODO: cross contract call: need zksync support
+    self.uniIERC20.safeTransferFrom(zksync::msg.sender, self.address, amount);
+    if (poolIndex == UniPoolIndex) {
+        self.updateFeePoolUserInfo(UniUSDTPoolIndex, zksync::msg.sender, amount, true);
+    } else if (poolIndex == UniXPoolIndex) {
+        self.updateFeePoolUserInfo(UniXUSDTPoolIndex, zksync::msg.sender, amount, true);
+    }
+}
+
+pub fn unstakeUni(mut self, amount: u248, poolIndex: u248) {
+    let uniAddrIndex = self.getUniAddressIndex(poolIndex);
+    require(self.AddressMap.get(uniAddrIndex).0 != 0 as Address, "UNI address not set");
+    self.unstake(poolIndex, zksync::msg.sender, amount);
+
+    // TODO: cross contract call: need zksync support
+    self.uniIERC20.safeTransferFrom(self.address, zksync::msg.sender, amount);
+    if (poolIndex == UniPoolIndex) {
+        self.updateFeePoolUserInfo(UniUSDTPoolIndex, zksync::msg.sender, amount, true);
+    } else if (poolIndex == UniXPoolIndex) {
+        self.updateFeePoolUserInfo(UniXUSDTPoolIndex, zksync::msg.sender, amount, true);
+    }
+}
+
+fn getUniAddressIndex(self, uniPoolIndex: u248) -> u248 {
+    if (uniPoolIndex == UniXPoolIndex) {
+        UniXAddressIndex
+    } else if (uniPoolIndex == UniPoolIndex) {
+        UniAddressIndex
+    } else {
+        require(false, "not suppored uni pool");
+        0 as u248
+    }
+}
+
+// called by LpToken or DToken stake for fee
+pub fn updateFeePoolUserInfo(mut self, poolIndex: u248, owner: Address, amount: u248, inc: bool) {
+    let now = 0 as u248;
+    self.settleUserReward(poolIndex, owner);
+    let userInfo = self.getUserInfo(poolIndex, owner);
+
+    if (!inc) {
+        require(userInfo.amount >= amount, "withdraw: not good");
+        require(now >= userInfo.deadline, "not reach deadline");
+    }
+
+    self.updatePoolUserAmount(poolIndex, owner, amount, inc);
+    if (poolIndex == LP_TOKEN_REBATE_POOL_INDEX) {
+        self.updateAcceleratePool(now, poolIndex, owner, userInfo.amount, inc);
+    }
+    self.updateUserDebt(poolIndex, owner);
+}
+
+pub fn settleUserReward(mut self, poolIndex: u248, owner: Address) -> u248 {
+    let pool = self.PoolInfoList.get(poolIndex).0;
+    let mut userInfo = self.getUserInfo(poolIndex, owner);
+
+    let mut amount: u248 = 0;
+    if (pool.stakeType == STAKE_TYPE_REBATE) {
+        // settle USDT reward
+        if (userInfo.amount > 0) {
+            let userAmount: u248 = self.getOwnerTokenAmount(owner, poolIndex);
+            let accAmount: u248 = div(
+                mul(userAmount, pool.accDTokenPerShare),
+                ACC_D_TOKEN_PER_SHARE_MULTIPLIER,
+            );
+            amount = sub(accAmount, userInfo.rewardDebt);
+            userInfo.rewardDebt = accAmount;
+            if (amount > 0) {
+                self.safeUsdtTransfer(owner, amount);
+                self.transfer(owner, self.AddressMap.get(USDT_ADDRESS_INDEX).0, amount);
+                // emit RewardNotify(owner, poolIndex, RewardNotifyUsdt, amount);
+            }
+        }
+    } else {
+        // settle DFT reward
+        let issuedDTokens: u248 = self.getIssuedDTokenFromLastToNow(poolIndex, BLOCK_NUMBER);
+        self.updatePoolInfo(poolIndex, issuedDTokens, true);
+        if (userInfo.amount > 0) {
+            let userAmount: u248 = self.getOwnerTokenAmount(owner, poolIndex);
+            let accAmount: u248 = div(
+                mul(userAmount, pool.accDTokenPerShare),
+                ACC_D_TOKEN_PER_SHARE_MULTIPLIER,
+            );
+            amount = sub(accAmount, userInfo.rewardDebt);
+            userInfo.rewardDebt = accAmount;
+            if (amount > 0) {
+                // safeDTokenTransfer(owner, amount);
+                self.transfer(owner, self.AddressMap.get(D_TOKEN_ADDRESS_INDEX).0, amount);
+                // emit RewardNotify(owner, poolIndex, RewardNotifyDToken, amount);
+            }
+        }
+    }
+    amount
+}
+
+fn updateAcceleratePool2(mut self, now: u248, poolIndex: u248, owner: Address, dTokenAmount: u248, vTokenAmount: u248, inc: bool) -> u248 {
+    let mut userInfo = self.AccelerateSummaryMap.get(owner).0;
+    if (!inc) { // must withdraw all
+        require(userInfo.dTokenAmount > 0, "no dToken to accelerate");
+        require(now >= userInfo.deadline, "not reach deadline");
+    }
+
+    let oldDTokenAmount = userInfo.dTokenAmount;
+    let oldVTokenAmount = userInfo.vTokenAmount;
+    if (inc) {
+        userInfo.dTokenAmount = add(userInfo.dTokenAmount, dTokenAmount);
+        userInfo.maxAmount = add(userInfo.maxAmount, vTokenAmount);
+
+        let user = self.getUserInfo(poolIndex, owner);
+        userInfo.vTokenAmount = min(userInfo.maxAmount, user.amount);
+        userInfo.deadline = now + TS_PER_DAY;
+
+        self.accelerateSummary.vTokenAmount = sub(add(self.accelerateSummary.vTokenAmount, userInfo.vTokenAmount), oldVTokenAmount);
+        self.accelerateSummary.dTokenAmount = add(self.accelerateSummary.dTokenAmount, dTokenAmount);
+    } else {
+        self.accelerateSummary.vTokenAmount = sub(self.accelerateSummary.vTokenAmount, oldVTokenAmount);
+        self.accelerateSummary.dTokenAmount = add(self.accelerateSummary.dTokenAmount, oldDTokenAmount);
+        self.AccelerateSummaryMap.insert(owner, userInfo);
+    }
+    oldDTokenAmount
+}
+
+fn updateAcceleratePool(mut self, now: u248, poolIndex: u248, who: Address, lpTokenAmount: u248, inc: bool) {
+    let mut userInfo = self.AccelerateSummaryMap.get(who).0;
+    // if (!inc) { // must withdraw all
+    //     require(userInfo.dTokenAmount > 0, "no dToken to accelerate");
+    //     require(now >= userInfo.deadline, "not reach deadline");
+    // }
+
+    let oldActualAmount = userInfo.vTokenAmount;
+    let newActualAmount = min(userInfo.maxAmount, lpTokenAmount);
+
+    let mut delta: u248 = 0 as u248;
+    if (inc) {
+        delta = sub(newActualAmount, oldActualAmount);
+        userInfo.vTokenAmount = add(userInfo.vTokenAmount, delta);
+        self.accelerateSummary.vTokenAmount = add(self.accelerateSummary.vTokenAmount, delta);
+    } else {
+        delta = sub(oldActualAmount, newActualAmount);
+        userInfo.vTokenAmount = sub(userInfo.vTokenAmount, delta);
+        self.accelerateSummary.vTokenAmount = sub(self.accelerateSummary.vTokenAmount, delta);
+    }
+    // self.UpdateUserInfo(poolIndex, who, userInfo);
+    self.AccelerateSummaryMap.insert(who, userInfo);
+}
+
+fn updateUserDebt(mut self, poolIndex: u248, owner: Address) {
+    let pool = self.PoolInfoList.get(poolIndex).0;
+    let mut user = self.getUserInfo(poolIndex, owner);
+
+    let newUserAmount: u248 = self.getOwnerTokenAmount(owner, poolIndex);
+    user.rewardDebt = div(mul(newUserAmount, pool.accDTokenPerShare), ACC_D_TOKEN_PER_SHARE_MULTIPLIER);
+    self.UpdateUserInfo(poolIndex, owner, user);
+}
+
+fn updatePoolUserAmount(mut self, poolIndex: u248, owner: Address, amount: u248, inc: bool) {
+    let mut pool = self.PoolInfoList.get(poolIndex).0;
+    let mut user = self.getUserInfo(poolIndex, owner);
+
+    if (inc) {
+        user.amount = add(user.amount, amount);
+        pool.amount = add(pool.amount, amount);
+    } else {
+        user.amount = sub(user.amount, amount);
+        pool.amount = sub(pool.amount, amount);
+    }
+    self.UpdateUserInfo(poolIndex, owner, user);
+    self.PoolInfoList.insert(poolIndex, pool);
+}
+
+fn updatePoolInfo(mut self, poolIndex: u248, amount: u248, needMint: bool) {
+    let mut pool = self.PoolInfoList.get(poolIndex).0;
+
+    let stakeAmount: u248 = self.getPoolTokenAmount(poolIndex);
+    if (stakeAmount == 0) {
+        pool.lastRewardBlock = BLOCK_NUMBER;
+        () //return;
+    }
+    if (needMint) {
+        // safeMintDToken
+        self.safeMintDToken(self.address, amount);
+    }
+    pool.accDTokenPerShare = add(pool.accDTokenPerShare, div(mul(amount, ACC_D_TOKEN_PER_SHARE_MULTIPLIER), (stakeAmount)));
+    pool.lastRewardBlock = BLOCK_NUMBER;
+    self.PoolInfoList.insert(poolIndex, pool);
+}
+
+// // pool.lastRewardBlock ---> blockNumber
+fn getIssuedDTokenFromLastToNow(mut self, poolIndex: u248, blockNumber: u248) -> u248 {
+    let pool = self.PoolInfoList.get(poolIndex).0;
+
+    let mut amount: u248 = 0;
+    let mut cursor: u248 = pool.lastRewardBlock;
+    let mut index: u248 = self.getWorkIndex(pool.lastRewardBlock);
+
+    // const blocknumber
+    for i in 0..100
+    while (cursor < 20) {
+        let tmp = self.DTokenIssueRateArray.get(index).0;
+        let currDTokenPerBlock: u248 = tmp.dtokenPerBlock;
+        let startBlock: u248 = cursor;
+        let mut endBlock: u248 = blockNumber;
+
+        let nextIndex: u248 = add(index, 1 as u248);
+        // if (nextIndex < DTokenIssueRateArray.length) {
+        for j in 0..100
+        while self.DTokenIssueRateArray.get(nextIndex).1 {
+            let val = self.DTokenIssueRateArray.get(nextIndex).0;
+            let nextCheckpoint: u248 = val.checkpoint;
+            if (nextCheckpoint < blockNumber) {
+                endBlock = nextCheckpoint;
+            }
+        }
+        let elapsedNum: u248 = sub(endBlock, startBlock);
+        let periodAmount: u248 = div(mul(mul(elapsedNum, currDTokenPerBlock), pool.allocPoint), ISSUE_TOTAL_ALLOC_POINT);
+        amount = add(amount, periodAmount);
+        cursor = endBlock;
+        index = add(index, 1 as u248);
+    }
+    amount
+}
+
+pub fn mint(mut self, to: Address, ratio: u248, usdtAmount: u248) {
+    self.onlyMaster();
+
+    let lpSupply = self.lptokenIERC20.totalSupply();
+    let mut amount = 0 as u248;
+    if (ratio == RATIO_BASE && lpSupply == 0) {
+        amount = usdtAmount; // 1e18/USDTDecimal;
+    } else {
+        amount = lpSupply*(ratio)/(RATIO_BASE);
+    }
+
+    require(amount > 0, "Mint not good");
+
+    self.stake(LP_TOKEN_POOL_INDEX, to, amount);
+    self.lptokenIERC20._mint(zksync::msg.sender, amount);
+}
+
+pub fn burn(mut self, owner: Address, amount: u248) {
+    self.onlyMaster();
+    require(amount > 0, "Burn not good");
+    self.unstake(LP_TOKEN_POOL_INDEX, owner, amount);
+    self.lptokenIERC20._burn(zksync::msg.sender, amount);
+}
+
+// TODO
+pub fn tradingMint(mut self, to: Address, amount: u248) {
+    self.onlyMaster();
+    require(to != 0 as Address, "address is 0");
+    self.updatePoolUserAmount(TRADER_POOL_INDEX, to, amount, true);
+
+    let parent = self.RelationMap.get(to).0;
+    let mut pAmount = 0 as u248;
+    let mut gAmount = 0 as u248;
+    if (parent != 0 as Address && parent != self.RelationMap.get(parent).0) {
+        let pRatio = self.RelationMap.get(TradingGrandpaRatioIndex).0;
+        pAmount = amount*(pRatio as u248)/(TradingRatioBase);
+        self.updatePoolUserAmount(TRADER_POOL_INDEX, parent, pAmount, true);
+
+        let grandpa = self.RelationMap.get(parent).0;
+        if (grandpa != 0 as Address && grandpa != self.RelationMap.get(grandpa).0) {
+
+            let gRatio = self.RelationMap.get(TradingGrandpaRatioIndex).0;
+            gAmount = amount*(gRatio  as u248)/(TradingRatioBase);
+            self.updatePoolUserAmount(TRADER_POOL_INDEX, grandpa, gAmount, true);
+        }
+    }
+    // address[3] memory whoArr;
+    // uint256[3] memory amountArr;
+    // whoArr[0] = to;
+    // amountArr[0] = amount;
+    // whoArr[1] = parent;
+    // amountArr[1] = pAmount;
+    // whoArr[2] = grandpa;
+    // amountArr[2] = gAmount;
+    // emit TradingMint(whoArr, amountArr);
+}
+
+pub fn getRatioOf(mut self, poolIndex: u248, owner: Address, amount: u248) -> u248 {
+    if amount == 0 as u248 {
+        0 as u248;
+    }
+    if owner != self.AddressMap.get(D_TOKEN_ADDRESS_INDEX).0 {
+        let userInfo = self.getUserInfo(poolIndex, owner);
+        require(userInfo.amount >= amount, "has no enough");
+    }
+    let lpSupply = self.lptokenIERC20.totalSupply();
+    div(mul(amount, RATIO_BASE), lpSupply)
+}
+
+pub fn getTotalRatioOf(mut self, owner: Address, poolIndex: u248) -> u248 {
+    let userAmount: u248 = self.getUserInfo(poolIndex, owner).amount;
+    let lpSupply = self.lptokenIERC20.totalSupply();
+    let number: u248 = 0;
+    if self.lptokenIERC20.totalSupply() == 0 {
+        0 as u248;
+    }
+    div(mul(userAmount, RATIO_BASE), self.lptokenIERC20.totalSupply()) as u248
+}
+
+fn stake(mut self, poolIndex: u248, owner: Address, amount: u248) {
+    let now = 0 as u248;
+    self.updateIssuePoolUserInfo(poolIndex, owner, amount, true);
+    if (poolIndex == LP_TOKEN_POOL_INDEX) {
+        self.updateFeePoolUserInfo(LP_TOKEN_REBATE_POOL_INDEX, owner, amount, true);
+    }
+}
+
+fn unstake(mut self, poolIndex: u248, owner: Address, amount: u248) {
+    self.updateIssuePoolUserInfo(poolIndex, owner, amount, false);
+    if (poolIndex == LP_TOKEN_POOL_INDEX) {
+        self.updateFeePoolUserInfo(LpTokenUSDTPoolIndex, owner, amount, false);
+    }
+}
+
+pub fn updateIssuePoolUserInfo(mut self, poolIndex: u248, owner: Address, amount: u248, inc: bool) {
+    self.settleUserReward(poolIndex, owner);
+    let mut userInfo = self.getUserInfo(poolIndex, owner);
+    if !inc {
+        require(userInfo.amount >= amount, "withdraw: not good");
+        self.updatePoolUserAmount(poolIndex, owner, amount, inc);
+    }
+    self.updateUserDebt(poolIndex, owner);
+}
+
+pub fn safeUsdtTransfer(mut self, to: Address, amount: u248) {
+    self.usdtIERC20.safeTransfer(to, amount);
+}
+
+// pub fn safeTransfer(mut self, token: u248, to: Address, amount: u248) {
+//     let balances: (u248, bool) = self.balanceOf(to);
+//     if (amount > balances.0) {
+//         self.transfer(zksync::msg.sender, token, balances.0);
+//     } else {
+//         self.transfer(zksync::msg.sender, token, amount);
+//     }
+// }
+
+// for Special Pool
+fn claimPoolDToken(mut self, who: Address, poolIndex: u248) -> u248 {
+    let amount: u248 = self.poolDTokenPendingInternal(poolIndex);
+    if amount > 0 {
+        self.safeMintDToken(who, amount);
+    }
+    let mut pool = self.PoolInfoList.get(poolIndex).0;
+    pool.lastRewardBlock = BLOCK_NUMBER;
+    self.PoolInfoList.insert(poolIndex, pool);
+    amount
+}
+
+fn pendingToken(mut self, user: Address, poolIndex: u248, owner: Address) -> (u248, u248) {
+    self.pendingTokenInternal(user, poolIndex, owner)
+}
+
+fn poolDTokenPendingInternal(mut self, poolIndex: u248) -> u248 {
+    let pool = self.PoolInfoList.get(poolIndex).0;
+    if (BLOCK_NUMBER <= pool.lastRewardBlock) {
+        0 as u248;
+    }
+    self.getIssuedDTokenFromLastToNow(poolIndex, BLOCK_NUMBER)
+}
+
+pub fn pendingTokenForSpecialPool(mut self, poolIndex: u248) -> u248 {
+    let amount: u248 = self.poolDTokenPendingInternal(poolIndex);
+
+    if poolIndex == FOMO_POOL_INDEX {
+        add(self.selfFomoAmount, amount);
+    }
+
+    amount
+}
+
+pub fn pendingTokenInternal(mut self, user: Address, poolIndex: u248, owner: Address) -> (u248, u248) {
+    let mut pendingDToken: u248 = 0;
+    let mut pendingUsdt: u248 = 0;
+    let length: u248 = 0;
+    if (poolIndex >= length) {
+        (pendingDToken, pendingUsdt);
+    }
+    let pools: PoolInfo = self.PoolInfoList.get(poolIndex).0;
+
+    if pools.stakeType == STAKE_TYPE_REBATE {
+        let rebatePool: PoolInfo = self.PoolInfoList.get(poolIndex).0;
+        let rebateUserInfo = self.getUserInfo(poolIndex, owner);
+        let userAmount = self.getOwnerTokenAmount(user, poolIndex);
+        pendingUsdt = mul(userAmount, sub(div(rebatePool.accDTokenPerShare, ACC_D_TOKEN_PER_SHARE_MULTIPLIER), rebateUserInfo.rewardDebt));
+    } else {
+        let userInfo: UserInfo = self.getUserInfo(poolIndex, owner);
+        if (userInfo.amount > 0) {
+            let pool = self.PoolInfoList.get(poolIndex).0;
+            let mut accDTokenPerShare: u248 = pool.accDTokenPerShare;
+            let stakeAmount: u248 = self.getPoolTokenAmount(poolIndex);
+            if stakeAmount != 0 {
+                let dTokenReward = self.getIssuedDTokenFromLastToNow(poolIndex, BLOCK_NUMBER);
+                accDTokenPerShare = add(accDTokenPerShare, div(mul(ACC_D_TOKEN_PER_SHARE_MULTIPLIER, dTokenReward), stakeAmount));
+            }
+            let userAmount = self.getOwnerTokenAmount(user, poolIndex);
+            pendingDToken = sub(div(mul(userAmount, accDTokenPerShare), ACC_D_TOKEN_PER_SHARE_MULTIPLIER), userInfo.rewardDebt);
+        }
+    };
+    (pendingDToken, pendingUsdt)
+}
+
+pub fn claimFomoToSelf(mut self) {
+    let thisAddress: Address = 0;
+    let amount: u248 = self.claimPoolDToken(thisAddress, FOMO_POOL_INDEX);
+    self.selfFomoAmount = add(self.selfFomoAmount, amount);
+}
+
+fn claimSpecialPool(mut self, poolIndex: u248) {
+    //address(0)
+    let address: Address = 0;
+    let addressIndex: u248 = self.specialIndex2AddrIndex(poolIndex);
+    require(self.AddressMap.get(addressIndex).0 != address, "claimed address not set");
+    let amountself: u248 = self.claimPoolDToken(self.AddressMap.get(addressIndex).0, poolIndex);
+}
+
+pub fn poolSize() -> u248 {
+    // TODO: need fixed PoolInfoListLength
+    let PoolInfoListLength: u248 = 0;
+    PoolInfoListLength
+}
+
+fn specialIndex2AddrIndex(mut self, poolIndex: u248) -> u248 {
+    if (TRADER_POOL_INDEX == poolIndex) {
+        TRADER_ADDRESS_INDEX
+    } else if (PARTNER_POOL_INDEX == poolIndex) {
+        PARTNER_ADDRESS_INDEX
+    } else if (DYNAMIC_POOL_INDEX == poolIndex) {
+        DYNAMIC_ADDRESS_INDEX
+    } else if (AIRDRO_PPOOL_INDEX == poolIndex) {
+        AIRDROP_ADDRESS_INDEX
+    } else if (COMMUNITY_POOL_INDEX == poolIndex) {
+        COMMUNITY_ADDRESS_INDEX
+    } else {
+        require(false, "claimed address not set");
+        0 as u248
+    };
+    0 as u248
+}
+
+
+fn claimFomoToken(mut self, winner: Address) {
+    let amount: u248 = self.claimPoolDToken(winner, FOMO_POOL_INDEX);
+    if (self.selfFomoAmount > 0) {
+        self.transfer(zksync::msg.sender, winner, amount);
+        self.selfFomoAmount = 0 as u248;
+    }
+    //emit RewardNotify(winner, FomoPoolIndex, RewardNotifyDToken, amount.add(self.selfFomoAmount));
+}
+
+fn allPendingToken(mut self, user: Address, owner: Address) -> (u248, u248) {
+    let mut totalPendingDToken: u248 = 0;
+    let mut totalPendingUsdt: u248 = 0;
+    for poolIndex in 0..POOL_INFO_LIST_LENGTH {
+        let pendingDToken: u248 = 0;
+        let pendingUsdt: u248 = 0;
+        let pend: (u248, u248) = self.pendingTokenInternal(user, poolIndex, owner);
+        totalPendingDToken = add(totalPendingDToken, pend.0);
+        totalPendingUsdt = add(totalPendingUsdt, pend.1);
+    }
+    (totalPendingDToken, totalPendingUsdt)
+}
+
+fn claimAllPendingToken(mut self) {
+    for poolIndex in 0..POOL_INFO_LIST_LENGTH {
+        if (self.isSpecialPool(poolIndex)) {}
+        self.settleUserReward(poolIndex, zksync::msg.sender);
+    }
+}
+
+fn claimPendingToken(mut self, poolIndex: u248) {
+    if (poolIndex >= POOL_INFO_LIST_LENGTH || self.isSpecialPool(poolIndex)) {
+
+        //return
+    }
+    self.settleUserReward(poolIndex, zksync::msg.sender);
+}
+
+//claimSpecialPoolBatch(poolIndexes:[uint256])
+fn claimSpecialPoolBatch(mut self) {
+    for poolIndex in 0..POOL_INFO_LIST_LENGTH {
+        self.claimSpecialPool(poolIndex);
+    }
+}
+
+fn setIssueCheckPoint(mut self, blockNumber: u248, dtokenPerBlock: u248) {
+    let DTokenIssue = self.DTokenIssueRateArray.get(sub(D_TOKEN_ISSUE_RATE_ARRAY_LENGTH, 1 as u248)).0;
+    require(blockNumber > DTokenIssue.checkpoint, "need a greate blockNumber");
+    self.DTokenIssueRateArray.insert(1 as u248, DTokenIssueRate { checkpoint: blockNumber, dtokenPerBlock: dtokenPerBlock });
+}
+
+//TODO: update this
+pub fn removeAccelerate(mut self, now: u248) {
+    let mut dTokenAmount: u248 = 0;
+    let mut vTokenAmount: u248 = 0;
+    self.updateAcceleratePoolUserInfo(now, LP_TOKEN_REBATE_POOL_INDEX, zksync::msg.sender, dTokenAmount, vTokenAmount, false);
+    let oldDTokenAmount: u248 = self.updateAcceleratePoolUserInfo(now, LP_TOKEN_REBATE_POOL_INDEX, zksync::msg.sender, dTokenAmount, vTokenAmount, false);
+    let mut dftFee: u248 = 10;
+    let Ratio: u248 = self.RatioMap.get(DFT_FEE_INDEX).0;
+    if Ratio != 0 {
+        dftFee = Ratio;
+    };
+    let fee: u248 = div(mul(dftFee, oldDTokenAmount), 1000 as u248);
+    let returnAmount: u248 = sub(oldDTokenAmount, fee);
+    self.transfer(zksync::msg.sender, self.lptokenIERC20.totalSupply(), returnAmount);
+
+    let address: Address = self.AddressMap.get(ACCELERATE_FEE_ADDRESS_INDEX).0;
+    self.transfer(address, self.lptokenIERC20.totalSupply(), fee);
+}
+
+fn updateAcceleratePoolUserInfo(mut self, now: u248, poolIndex: u248, owner: Address, dTokenAmount: u248, vTokenAmount: u248, inc: bool) -> u248 {
+    // 1. Settle the user reward first
+    self.settleUserReward(poolIndex, owner);
+    // 2. Update the acceleration info
+    let oldDTokenAmount: u248 = self.updateAcceleratePool2(now, poolIndex, owner, dTokenAmount, vTokenAmount, inc);
+    // 3. Update the user's debt info
+    self.updateUserDebt(poolIndex, owner);
+
+    oldDTokenAmount
+}
+
+fn minBMulRatio(self, a: u248, b: u248) -> u248 { // fix stack too deep
+    min(a, b*(self.RatioMap.get(AccelerateDftRatioIndex as u248).0)/(AccelerateDftRatioBase))
+}
+
+fn isFirstMint(mut self) -> bool {
+    self.lptokenIERC20.totalSupply() == 0
+}
+
+fn distributeUsdtByFees(mut self, amount: u248) {
+    let DPool = self.PoolInfoList.get(D_TOKEN_REBATE_POOL_INDEX).0;
+    let dtokenRebatePoolAmount: u248 = div(mul(DPool.allocPoint, amount), REBATE_ALLOC_POINT);
+    self.updatePoolInfo(D_TOKEN_REBATE_POOL_INDEX, dtokenRebatePoolAmount, false);
+    let LpPool = self.PoolInfoList.get(LP_TOKEN_REBATE_POOL_INDEX).0;
+    let mut lpRebatePoolAmount = div(mul(amount, LpPool.allocPoint), REBATE_ALLOC_POINT);
+    if (self.getPoolTokenAmount(D_TOKEN_REBATE_POOL_INDEX) == 0 as u248) {
+        lpRebatePoolAmount = add(lpRebatePoolAmount, dtokenRebatePoolAmount);
+    };
+    self.updatePoolInfo(LP_TOKEN_REBATE_POOL_INDEX, lpRebatePoolAmount, false);
+}
+
+fn getLpTokenAmount(mut self, owner: Address) -> u248 {
+    self.lptokenIERC20.balanceOf(owner)
+}
+
+fn safeMintDToken(mut self, to: Address, amount: u248) {
+    self.dtokenIERC20._mint(to, amount);
+}
+
+fn safeDTokenTransfer(mut self, to: Address, amount: u248) {
+    self.dtokenIERC20.safeTransfer(to, amount);
+}
+
+// pool function
+fn limitPositionInBlock(mut self, symbol: bytes32, newValue: u192) {
+    let mut SysValue = self.SysValueInBlock.get(symbol).0;
+    let mut curr = self.CurrPosLimit.get(symbol).0;
+
+    if (curr.blocknum as u248 != BLOCK_NUMBER) {
+        curr.blocknum = BLOCK_NUMBER as u64;
+        curr.value = newValue as u64;
+        let (old1, existed1) = self.CurrPosLimit.insert(symbol, curr);
+    } else {
+        let currValue: u192 = curr.value as u192 + newValue;
+        require(currValue <= SysValue as u192, "Over Max Value in One Block");
+        curr.value = currValue as u64;
+        let (old1, existed1) = self.CurrPosLimit.insert(symbol, curr);
+    };
+}
+
+fn setDiscount(mut self, index: u248, amount: u128, dis: u128) {
+    self.discounts[index] = DiscountSetting { dftAmount: amount as i248, discount: dis as i248 };
+}
+
+pub fn refreshAllSymbolsPrice(mut self) {
+    for i in 0..100 {
+        self.getPriceFromChainLink(self.SysSupportTradeSymbols[i])
+    }
+}
+
+
+fn limitRatioToRange(self, ratio: i248) -> i248 {
+    let mut Ration: i248 = 0;
+    if ratio < -1E6 {
+        Ration = -1E6 as i248;
+    }
+
+    if ratio > 1E6 {
+        Ration = 1E6 as i248;
+    }
+    Ration as i248
+}
+
+
+fn setInterestRepoter(mut self, repoter: Address, asRepoter: bool) {
+    let mut InteRate = self.InterestRateRepoters.get(repoter).0;
+    InteRate = asRepoter;
+    self.InterestRateRepoters.insert(repoter, InteRate);
+}
+
+//todo
+fn reportInterestRate(mut self, symbol: bytes32, rate: i248, timestamp: i8) {
+    let time = self.InstantInterestRates.get(symbol).0;
+    require(timestamp > time.timestamp, "timestamp smaller than online record.");
+    let mut ratei: i248 = rate;
+    if (ratei > RATE_INTEGER) { ratei = RATE_INTEGER; };
+    if (ratei < RATE_NEGATIVE) { ratei = RATE_NEGATIVE; };
+}
+
+
+pub fn getPriceFromChainLink(mut self, symbol: bytes32) -> u248 {
+    let offline = self.OfflinePrices.get(symbol).0;
+
+    if offline.price != 0 {
+        offline.price;
+    }
+
+    let mut tokenChain = self.TokensOnChainLink.get(symbol).0;
+    let mut feeder = tokenChain.tokenAddr;
+    let mut isUSDTAtEnd = tokenChain.isUSDTAtEnd;
+    // Address(0)
+    if feeder == 0 {
+        0 as u248;
+    }
+    let latest = self.latestRoundData(feeder);
+
+    let mut rawPrice: u248 = 0;
+    if isUSDTAtEnd {
+        rawPrice = div(mul(USDT_DECIMALS, 10 ^ latest.1 as u248), latest.0);
+    } else {
+        rawPrice = div(mul(latest.0, USDT_DECIMALS), 10 ^ latest.1 as u248);
+    };
+    let token = self.TokenPrecisions.get(symbol).0;
+
+    div(rawPrice, 10 ^ token as u248)
+}
+
+pub fn latestRoundData(mut self, feeder: Address) -> (u248, u8) { (0 as u248, 0 as u8) }
+
+fn setValueInBlock(mut self, symbol: bytes32, value: u192) {
+    self.SysValueInBlock.insert(symbol, value);
+}
+
+fn marginRatioWithCachedPrice(mut self) -> u248 {
+    let symb = self.symbolsAndPrices();
+    let mut proVal = self.getProfitAndValue(symb.0, symb.1);
+
+    if proVal.1 == 0 {
+        MAX_ENOUGH_MARGIN
+    } else {
+        self.pdiv(add(proVal.0 as u248, self.PoolUsdtBalances), proVal.1)
+    }
+}
+
+fn getProfitAndValue(mut self, symbols: [bytes32; 100], prices: [u248; 1]) -> (i248, u248, u248, u248) {
+    let mut totalProfit: i248 = 0;
+    let mut totalValue: u248 = 0;
+    let mut longValue: u248 = 0;
+    let mut shortValue: u248 = 0;
+    for i in 0..SYS_SUPPORT_TRADE_SYMBOLS_LENGTH {
+        let symbol: bytes32 = symbols[i];
+        let latestPrice: u248 = prices[i];
+        let mut bullish = self.getPoolPositionMap(symbol, LONG_DIRECTION);
+        let mut bearish = self.getPoolPositionMap(symbol, SHORT_DIRECTION);
+        if (bullish.amount == 0 && bearish.amount == 0) {
+            //continue
+        };
+        if (bullish.amount != 0) {
+            let mut proValue = self.calProfitAndValue(bullish, latestPrice);
+            let profit = proValue.0;
+            let value = proValue.1;
+            totalProfit = add(totalProfit as u248, profit as u248) as i248;
+            totalValue = add(totalValue as u248, value as u248);
+            longValue = add(longValue as u248, value as u248);
+        };
+
+        if (bearish.amount != 0) {
+            let mut proValue = self.calProfitAndValue(bearish, latestPrice);
+            let profit = proValue.0;
+            let value = proValue.1;
+            totalProfit = add(totalProfit as u248, profit as u248) as i248;
+            totalValue = add(totalValue as u248, value as u248);
+            longValue = add(longValue as u248, value as u248);
+        }
+    }
+    (totalProfit, totalValue, longValue, shortValue)
+}
+
+fn getPositionFeeRatioWithOffset(mut self, offset: i248, newPositionValue: u248, direction: i8, mut dftAmount: u248, poolProfit: i248) -> (i248, bool, bool) {
+    let poolBalance: i248 = add(poolProfit as u248, self.PoolUsdtBalances);
+    require(poolBalance != 0, "Pool Underflow");
+    let mut diff: i248 = 0;
+    let mut baseRatio: u248 = 0;
+    let mut ratio: u248 = 0;
+    let mut isPoolDisequilibrium: bool = false;
+    let mut isWillShrinkOffset: bool = false;
+    {
+        let mut endOffset: u248 = 0;
+        let startD = self.pdiv(endOffset as u248, poolBalance as u248);
+
+        if direction == LONG_DIRECTION {
+            endOffset = sub(offset as u248, newPositionValue)
+        } else {
+            endOffset = add(offset as u248, newPositionValue);
+        }
+
+        let endD = self.pdiv(endOffset, poolBalance as u248);
+
+        isPoolDisequilibrium = abs(endD as i248) > self.SysRatios.get(NAKED_POSITION_RATIO).0;
+        isWillShrinkOffset = abs(endOffset as i248) < abs(offset as i248);
+
+        let startDAS = self.limitRatioToRange(startD as i248);
+        let endDAS = self.limitRatioToRange(endD as i248);
+
+        diff = pmul(self.SysRatios.get(POSITION_FEE_E_RATIO).0, div(add(startDAS as u248, endDAS as u248), 2 as u248));
+
+        baseRatio = self.SysRatios.get(POSITION_FEE_S_RATIO).0;
+
+        let mut label: u248 = 1 << 128;
+
+        let mut withExtraDiscount: bool = false;
+        let laDf = label & dftAmount;
+
+        if laDf != 0 {
+            withExtraDiscount = true;
+        }
+
+        if withExtraDiscount {
+            let mut discount: u248 = 0;
+            let sys = self.SysRatios.get(EXTAR_DISCOUNT_LEVEL).0;
+            if sys == 0 as u248 {
+                discount = 95 as u248;
+            } else {
+                discount = self.SysRatios.get(EXTAR_DISCOUNT_LEVEL).0 as u248;
+            };
+            baseRatio = div(mul(baseRatio, discount), 100 as u248);
+            label = ~label;
+            dftAmount = label & dftAmount;
+        }
+        let mut labels = 1 << 129 as u248;
+        let mut extraFeeDiscount: bool = false;
+        let laDft: u248 = labels as u248 & dftAmount;
+        if laDft != 0 {
+            extraFeeDiscount = true;
+        };
+
+        if extraFeeDiscount {
+            baseRatio = pmul(baseRatio, self.SysRatios.get(EXTRA_FEE_DISCOUNT).0) as u248;
+            labels = ~ labels;
+            dftAmount = labels as u248 & dftAmount as u248;
+        };
+    }
+    {
+        if dftAmount as i248 >= self.discounts[0].dftAmount && dftAmount as i248<self.discounts[1].dftAmount {
+            let deltaX = sub(self.discounts[0].dftAmount as u248, self.discounts[1].dftAmount as u248);
+            let deltaY = sub(self.discounts[0].discount as u248, self.discounts[1].discount as u248);
+            let deltaAmount = sub(dftAmount, self.discounts[0].dftAmount as u248);
+            let applyDiscount = add(div(mul(deltaY, deltaAmount), deltaX), self.discounts[0].discount as u248);
+        } else if dftAmount >= self.discounts[1].dftAmount as u248 {
+            baseRatio = pmul(baseRatio, self.discounts[1].discount as u248) as u248;
+        }
+        if direction == LONG_DIRECTION {
+            ratio = sub(baseRatio, diff as u248);
+        } else {
+            ratio = add(baseRatio, diff as u248);
+        };
+    };
+    (ratio as i248, isPoolDisequilibrium, isWillShrinkOffset)
+}
+
+fn getPositionFeeRatioWithCache(mut self, newPositionValue: u248, direction: i8, dftAmount: u248) -> (i248, bool, bool) {
+    let symb = self.symbolsAndPrices();
+    let symbols = symb.0;
+    let prices = symb.1;
+
+    let mut profv = self.getProfitAndValue(symbols, prices);
+    let totalProfit: i248 = profv.0;
+    let longValue: i248 = profv.2;
+    let shortValue: u248 = profv.3;
+
+    let startOffset = sub(longValue as u248, shortValue as u248);
+
+    self.getPositionFeeRatioWithOffset(startOffset as i248, newPositionValue, direction, dftAmount, totalProfit)
+}
+
+fn getPositionFeeRatio(mut self, newPositionValue: u248, direction: i8, dftAmount: u248) -> (i248, bool, bool) {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+
+    let mut profv = self.getProfitAndValue(symbols, prices);
+    let totalProfit: i248 = profv.0;
+    let longValue: i248 = profv.2;
+    let shortValue: u248 = profv.3;
+
+    let startOffset = sub(longValue as u248, shortValue as u248);
+
+    self.getPositionFeeRatioWithOffset(startOffset as i248, newPositionValue, direction, dftAmount, totalProfit)
+}
+
+fn doCalculateInterest(mut self, symbol: bytes32, poolBalance: i248, offset: i248) -> (i248, i248) {
+    let mut D = self.pdiv(offset as u248, poolBalance as u248);
+    D = self.limitRatioToRange(D as i248) as u248;
+
+    let mut comp = self.SysRatios.get(POSITIONINTEREST_COMP).0;
+
+    let instRa = self.InstantInterestRates.get(symbol).0;
+
+    if instRa.timestamp as u248 >= BLOCK_TIMESTAMP || BLOCK_TIMESTAMP - instRa.timestamp as u248<8 as u248 {
+        comp = instRa.rate as u248;
+    };
+
+    let position = self.SysRatios.get(POSITIONINTEREST_E_RATIO).0;
+
+
+    let mulposi = div(mul(D, position), PRECESION_DECIMALS);
+
+    let diff = sub(mulposi, comp);
+
+    let rlong = sub(self.SysRatios.get(POSITIONINTEREST_S_RATIO).0, diff);
+    let rshort = add(self.SysRatios.get(POSITIONINTEREST_S_RATIO).0, diff);
+    (rlong as i248, rshort as i248)
+}
+
+
+fn getRealPoolBalance(mut self, symbols: [bytes32; 100], prices: [u248; 1]) -> (i248, u248, u248, i248) {
+    let mut totalProfit: i248 = 0;
+    let profit = self.getProfitAndValue(symbols, prices);
+    totalProfit = profit.0;
+    let totalValue: u248 = profit.1;
+    let longValue: u248 = profit.2;
+    let shortValue: i248 = profit.3;
+    let realBalance = add(totalProfit as u248, self.PoolUsdtBalances);
+    require(realBalance >= 0, "OOPS: Pool Underflow");
+    (realBalance as i248, totalValue, longValue, shortValue as i248)
+}
+
+
+fn getInterestRateOfSymbolWithCache(mut self, symbol: bytes32) -> (i248, i248) {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+
+    let poolBalance = self.getRealPoolBalance(symbols, prices).0;
+
+    let price = self.getPriceFromChainLink(symbol);
+
+    let offset = self.getPositionOffsetWithSymbol(symbol, price);
+    let rlrs = self.doCalculateInterest(symbol, poolBalance, offset);
+
+    (rlrs.0, rlrs.1)
+}
+
+
+fn getInterestRateOfSymbol(mut self, symbol: bytes32) -> (i248, i248) {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+    let poolBalance = self.getRealPoolBalance(symbols, prices).0;
+    let price = self.getPriceFromChainLink(symbol);
+
+    let offset = self.getPositionOffsetWithSymbol(symbol, price);
+
+    let rlrs = self.doCalculateInterest(symbol, poolBalance, offset);
+
+    (rlrs.0, rlrs.1)
+}
+
+fn getMarginRatio(mut self) -> u248 {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+    let proVal = self.getProfitAndValue(symbols, prices);
+    let profit: i248 = proVal.0;
+    let value: u248 = proVal.1;
+
+    if value == 0 {
+        MAX_ENOUGH_MARGIN
+    } else {
+        self.pdiv(value, add(profit as u248, self.PoolUsdtBalances))
+    }
+}
+
+fn getInfo(mut self) -> (u248, u248, i248, u248, u248, u248) {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+    let mut balance: u248 = self.PoolUsdtBalances;
+
+    let marginRatio = self.getMarginRatio();
+
+    let profix = self.getProfitAndValue(symbols, prices);
+    let profit = profix.0;
+    let value = profix.1;
+    let longPositionValue = profix.2;
+    let shortPositionValue = profix.3;
+    (balance, marginRatio, profit, value, longPositionValue, shortPositionValue)
+}
+
+fn getPositionOf(mut self, symbol: bytes32) -> [FPTypesPosition; 2] {
+    let poolLong = self.getPoolPositionMap(symbol, LONG_DIRECTION);
+    let poolShort = self.getPoolPositionMap(symbol, SHORT_DIRECTION);
+    let positions = [poolLong, poolShort];
+    positions
+}
+
+fn getUsdtAmountByRatioInner(mut self, ratio: u248) -> u248 {
+    let symb = self.symbolsAndPrices();
+    let symbols = symb.0;
+    let prices = symb.1;
+
+    self.doCalUsdtAmountByRatio(ratio, symbols, prices)
+}
+
+fn getRatioByUsdtAmountInner(mut self, usdtAmount: u248) -> u248 {
+    let symb = self.symbolsAndPrices();
+    let symbols = symb.0;
+    let prices = symb.1;
+    self.doCalRatioByUsdtAmount(usdtAmount, symbols, prices)
+}
+
+fn getUsdtAmountByRatio(mut self, ratio: u248) -> u248 {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+    self.doCalUsdtAmountByRatio(ratio, symbols, prices)
+}
+
+
+fn doCalUsdtAmountByRatio(mut self, ratio: u248, symbols: [bytes32; 100], prices: [u248; 1]) -> u248 {
+    let profit = self.getProfitAndValue(symbols, prices).0;
+    let realPoolSize: u248 = add(
+        profit as u248, self.PoolUsdtBalances);
+    //if (realPoolSize == 0 as u248) { 0 as u248 };
+    let withdrawAmount = div(mul(realPoolSize, ratio), PRECISION_DECIMALS_18);
+    //if (withdrawAmount > self.PoolUsdtBalances) { 0 };
+    withdrawAmount
+}
+
+
+//0 ETH
+//1 BTC
+fn getPoolPositionMap(mut self, tranType: bytes32, list: i8) -> FPTypesPosition {
+    if tranType == 0 {
+        self.ETHPoolPositions.get(list).0
+    } else {
+        self.BTCPoolPositions.get(list).0
+    }
+}
+
+fn deletePoolPositionMap(mut self, tranType: bytes32, list: i8) -> bool {
+    if tranType == 0 {
+        self.ETHPoolPositions.remove(list).0;
+        true
+    } else {
+        self.BTCPoolPositions.remove(list).0;
+        true
+    }
+    false
+}
+
+fn insertPoolPositionMap(mut self, tranType: bytes32, list: i8, PoolPosi: FPTypesPosition) {
+    if tranType == 0 {
+        self.ETHPoolPositions.insert(list, PoolPosi).0;
+    } else {
+        self.BTCPoolPositions.insert(list, PoolPosi).0;
+    };
+}
+
+fn symbolsAndPrices(mut self) -> ([bytes32; 100], [u248; 1]) {
+    let sysSuport = self.SysSupportTradeSymbols;
+    let mut prices = [1 as u248];
+
+    for i in 0..SYS_SUPPORT_TRADE_SYMBOLS_LENGTH {
+        prices[i] = self.getPriceFromChainLink(self.SysSupportTradeSymbols[i])
+    }
+
+    (sysSuport, prices)
+}
+
+fn poolOpenPosition(mut self, symbol: bytes32, amount: u248, buyinPrice: u248, direction: i8) {
+    self.limitPositionInBlock(symbol, mul(amount, buyinPrice) as u192);
+    let dir: i8 = self.versusDirection(direction);
+
+    let mut newp = FPTypesPosition {
+        amount: amount as u104,
+        price: buyinPrice as u104,
+        modifyBlock: BLOCK_NUMBER as u40,
+        direction: dir,
+    };
+
+    let mut PoolPosition = self.getPoolPositionMap(symbol, dir);
+
+    PoolPosition = self.mergePosition(newp, PoolPosition);
+
+    let ratiou = self.marginRatioWithCachedPrice();
+    let syRat = self.SysRatios.get(POOL_MARGIN_RATIO).0;
+    require(ratiou >= syRat, "Liquid Pool overflow");
+}
+
+fn poolClosePosition(mut self, symbol: bytes32, amount: u248, buyinPrice: u248, direction: i8, isForce: bool) -> bool {
+    if (!isForce) {
+        self.limitPositionInBlock(symbol, mul(amount, buyinPrice) as u192);
+    };
+    let dir = self.versusDirection(direction);
+
+    let mut poolPosition = self.getPoolPositionMap(symbol, dir);
+    require(poolPosition.amount as u248 >= amount, "OOPS: Pool Position Underflow");
+
+    if (poolPosition.amount as u248 == amount) {
+        self.deletePoolPositionMap(symbol, dir);
+    } else {
+        let mut A01: u248 = poolPosition.amount as u248 - amount;
+        let mut PA0: u248 = mul(poolPosition.amount as u248, poolPosition.price as u248);
+        let mut PA1: u248 = mul(amount, buyinPrice);
+        let mut Px: u248 = div(sub(PA0, PA1), A01);
+
+        poolPosition.amount = A01 as u104;
+        poolPosition.price = Px as u104;
+
+        self.insertPoolPositionMap(symbol, dir, poolPosition);
+    };
+
+    let mut shPosi = self.getPoolPositionMap(symbol, SHORT_DIRECTION);
+    let mut loPosi = self.getPoolPositionMap(symbol, LONG_DIRECTION);
+
+    loPosi.amount == 0 && shPosi.amount == 0
+}
+
+fn pdiv(mut self, a: u248, b: u248) -> u248 {
+    div(mul(a, PRECESION_DECIMALS), b)
+}
+
+fn addLiquid(mut self, usdtAmount: u248)
+{
+    self.onlyMaster();
+    self.PoolUsdtBalances = self.PoolUsdtBalances+(usdtAmount);
+}
+
+fn withdrawPool(mut self, usdtAmount: u248) {
+    self.onlyMaster();
+
+    self.PoolUsdtBalances = self.PoolUsdtBalances - (usdtAmount);
+    self.refreshAllSymbolsPrice();
+    let ratio = self.marginRatioWithCachedPrice();
+    require(
+        ratio >= self.SysRatios.get(PoolMarginRatio).0,
+        "Too much amount"
+    );
+}
+
+fn subLiquid(mut self, usdtAmount: u248) {
+    self.PoolUsdtBalances = sub(self.PoolUsdtBalances, usdtAmount);
+}
+
+fn getPositionOffsetWithSymbol(mut self, symbol: bytes32, price: u248) -> i248 {
+    let mut posPosition = self.getPoolPositionMap(symbol, LONG_DIRECTION);
+    let mut negPosition = self.getPoolPositionMap(symbol, SHORT_DIRECTION);
+
+    let mut pos = self.calProfitAndValue(posPosition, price).1;
+    let mut neg = self.calProfitAndValue(negPosition, price).1;
+
+    pos as i248 - neg as i248
+}
+
+fn getPositionOffset(mut self) -> i248 {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+
+    let mut offset: i248 = 0;
+    for i in 0..SYS_SUPPORT_TRADE_SYMBOLS_LENGTH {
+        let mut symbol: bytes32 = symbols[i];
+        let mut currentPrice: u248 = prices[i];
+        offset = add(self.getPositionOffsetWithSymbol(symbol, currentPrice) as u248, offset as u248) as i248;
+    }
+    offset
+}
+
+fn getPositionOffsetAndRatio(mut self) -> (i248, u248) {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+
+    let mut profv = self.getProfitAndValue(symbols, prices);
+    let totalProfit: i248 = profv.0;
+    let longValue: i248 = profv.2;
+    let shortValue: u248 = profv.3;
+
+    let offset = sub(longValue as u248, shortValue);
+    let poolBalance: u248 = add(totalProfit as u248, self.PoolUsdtBalances);
+
+    require(poolBalance > 0, "Pool Underflow2");
+
+    let ratio = abs(self.pdiv(offset, poolBalance) as i248);
+
+    (offset as i248, ratio)
+}
+
+fn symbolsAndPricesForView(mut self) -> ([bytes32; 100], [u248; 1]) {
+    let sysSuport = self.SysSupportTradeSymbols;
+    let mut prices = [1 as u248];
+    for i in 0..SYS_SUPPORT_TRADE_SYMBOLS_LENGTH {
+        prices[i] = self.getPriceFromChainLink(self.SysSupportTradeSymbols[i])
+    }
+    (sysSuport, prices)
+}
+
+fn getRatioByUsdtAmount(mut self, usdtAmount: u248) -> u248 {
+    let symPric = self.symbolsAndPricesForView();
+    let symbols = symPric.0;
+    let prices = symPric.1;
+
+    self.doCalRatioByUsdtAmount(usdtAmount, symbols, prices)
+}
+
+fn doCalRatioByUsdtAmount(mut self, usdtAmount: u248, symbols: [bytes32; 100], prices: [u248; 1]) -> u248 {
+    let profit = self.getProfitAndValue(symbols, prices).0;
+    let realPoolSize = add( profit as u248, self.PoolUsdtBalances);
+    let a: u248 = 0;
+    if realPoolSize == a {
+        a;
+    }
+    div(mul(usdtAmount, PRECISION_DECIMALS_18), realPoolSize)
+}
+
+fn setOracleAddress(mut self, oracle: Address) {
+    self.OracleAddress = oracle;
+}
+
+fn setSupportSymbols(mut self, symbols: [bytes32; 100]) {
+    self.SysSupportTradeSymbols = symbols;
+}
+}
+
+// sample inner-contract test
+// #[test]
+// fn test_mint() {
+//     //require(abs(-1 as i248) == 1 as u248, "The laws of the Universe have been broken");
+//     let mut instance = DfutureZk::new();
+//     instance.transferOwnership(zksync::msg.token_address);
+//     instance.withdrawFromPool(5 as u248);
+//     require(!instance.balanceOf(zksync::msg.token_address).1,"The laws of the Universe have been broken");
+
+//     instance.mint(zksync::msg.token_address, PrecisionDecimals18, 7000 as u248);
+//     require(instance.GetTotalSupply()==7000 as u248,"total supply wrong");
+//     instance.burn(zksync::msg.token_address,1000 as u248);
+//     require(instance.GetTotalSupply()==6000 as u248,"total supply wrong");
+// }
+
+// // poll test
+// #[test]
+// fn test_pool() {
+//     //require(abs(-1 as i248) == 1 as u248, "The laws of the Universe have been broken");
+//     let mut instance = DfutureZk::new();
+//     instance.init();
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,0 as u248).0 != 750);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,99999000000000000000000 as u248).0 != 750);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,100000000000000000000000 as u248).0 != 450);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,150000000000000000000000 as u248).0 != 750);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,199999000000000000000000 as u248).0 != 750);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,200000000000000000000000 as u248).0 != 750);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,250000000000000000000000 as u248).0 != 750);
+//     require(instance.getPositionFeeRatio(0 as u248,0 as i8,1 as u248).0 != 750);
+// }

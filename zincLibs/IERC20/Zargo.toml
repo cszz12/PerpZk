@@ -1,0 +1,6 @@
+[project]
+name = 'IERC20'
+type = 'contract'
+version = '0.1.0'
+
+[dependencies]

@@ -1,0 +1,130 @@
+//!
+//! The 'FPTypes' contract entry.
+//!
+use std::collections::MTreeMap;
+pub type Address = u160;
+
+pub type bytes32 = u8;
+
+// FPTypes
+struct FPTypesPosition {
+    amount: u104,
+    price: u104,
+    modifyBlock: u40,
+    direction: i8, // 1 long,  -1 short
+}
+
+// about decimals: say that we set 'eth' decimal to be 2; 10^2 = 100;
+// then 1 in amount means 0.01 eth; and prcie for 'eth' would be 0.01 * quoted eth price from oracle.
+struct FPTypesTradeSymbolSetting {
+    minAmount: u248,       // minimal tradable amount per transaction
+    maxAllowedValue: u248, // max tradable value per transaction
+    isSupport: bool,       // if trading for the symbol is supported
+    decimals: u8,
+}
+
+struct FPTypesFomoTraderInfo {
+    trader: Address, // last trader
+    blocknum: u96,   // last trading block
+}
+
+struct FPTypesPositionFeeDeposit {
+    lpFees: u248,     // transaction fee income for LP
+    lpInterest: u248, // interest income for LP
+
+    reserved: u248, // reserved
+    reserved1: u248, // reserved
+}
+
+struct FPTypesRatesStruct {
+    longRatio: i32,
+    longRatioWithPrice: i96,
+    shortRatio: i32,
+    shortRatioWithPrice: i96,
+}
+
+// struct FPTypesRates {
+//     mapping(u128 => RatesStruct) rates,
+// }
+
+struct FPTypesInterestIndex {
+    start: u128,
+    next: u128,
+}
+
+struct FPTypesIOUStruct {
+    iouTotalFees: u248,
+    iouTotalInterest: u248,
+}
+
+// TODO(liangqin.fanlq): To eliminate this struct in release version
+struct FPTypesPoolDeposits {
+    forceClosedDeposit: u128,
+    priceSlippagedDeposit: u128,
+}
+
+struct B32U128 {
+    ETH: u128,
+    USDT: u128,
+}
+
+struct B32U248 {
+    ETH: u248,
+    USDT: u248,
+}
+
+struct B32FPTypesPosition {
+    ETH: FPTypesPosition,
+    USDT: FPTypesPosition,
+}
+
+// pool struct
+struct PositionLimitation {
+    blocknum: u64,
+    value: u64,   // accumulated value for blocknum
+}
+
+struct DiscountSetting {
+    dftAmount: i248,
+    discount: i248, // 6 digitals precision
+}
+
+struct InstantInterestRate {
+    rate: i248,
+    timestamp: i8,
+}
+
+//MockOracleAggeregator.sol
+struct OfflinePriceInfo {
+    price: u248,
+    timestamp: u248,
+}
+
+struct STokensOnChainLink {
+    tokenAddr: Address,
+    decimals: u8,
+    // Chainlink price feed is order dependent, e.g. XXX-USDT and USDT-XXX is different;
+    // We use this flag to indicate if the order is XXX-USDT;
+    isUSDTAtEnd: bool,
+}
+
+struct OpenPositionParams {
+    txMaker: Address,
+    _symbol: bytes32,
+    _amount: u248,
+    _direction: i8,
+    _acceptablePrice: u248,
+    _approvedUsdt: u248,
+    parent: Address,
+    disallowInOneBlock: bool,
+}
+
+contract Fptypes {
+    pub value: u64;
+
+    pub fn new() -> Self {
+        Self {
+            value: 0 as u64,
+        }
+    }
+}

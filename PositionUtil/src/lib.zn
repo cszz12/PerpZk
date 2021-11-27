@@ -1,0 +1,81 @@
+//!
+//! The 'PositionUtil' contract entry.
+//!
+use FPTypes::Fptypes;
+
+use MixedMath::abs;
+
+use FPTypes::FPTypesFomoTraderInfo;
+use FPTypes::FPTypesPosition;
+use FPTypes::FPTypesPositionFeeDeposit;
+use FPTypes::FPTypesRatesStruct;
+use FPTypes::FPTypesTradeSymbolSetting;
+// use FPTypes::Rates;
+use FPTypes::B32FPTypesPosition;
+use FPTypes::FPTypesIOUStruct;
+use FPTypes::FPTypesInterestIndex;
+use FPTypes::FPTypesPoolDeposits;
+use FPTypes::B32U128;
+use FPTypes::B32U248;
+
+/**
+* Merge two positions and update the average cost
+* P0:  cost of existing position, A0: amount of existing position
+* P1:  cost of new position, A1: amount of new position
+* P:   current feeding price
+* Px:  average cost after merging
+* (P - P0) * A0 + (P - P1) * A1 = (P - Px) * (A0 + A1)
+*
+* => Px = (A0 * P0 + A1 * P1) / (A0 + A1);
+*
+ */
+fn mergePosition(mut newp: FPTypesPosition, oldp: FPTypesPosition) -> FPTypesPosition {
+    if (oldp.amount != 0) {
+        require(
+            newp.direction == oldp.direction,
+            "MergePosition: Different Direction",
+        );
+
+        let P0: u248 = oldp.price;
+        let A0: u248 = oldp.amount;
+        let P1: u248 = newp.price;
+        let A1: u248 = newp.amount;
+
+        let A01: u248 = A0 + (A1);
+        let PA0: u248 = P0 * (A0);
+        let PA1: u248 = P1 * (A1);
+        let Px: u248 = (PA0 + PA1) / (A01);
+
+        // type(u104).max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFF
+        require(
+            A01 < 0xFFFFFFFFFFFFFFFFFFFFFFFFFF && Px < 0xFFFFFFFFFFFFFFFFFFFFFFFFFF,
+            "amount or price overflow.",
+        );
+
+        newp.amount = (A01) as u104;
+        newp.price = (Px) as u104;
+    }
+    newp
+}
+
+fn calProfitAndValue(position: FPTypesPosition, currentPrice: u248) -> (i248, u248) {
+    let L: i248 = (position.direction) as i248;
+    let P: i248 = (currentPrice) as i248;
+    let P0: i248 = (position.price) as i248;
+    let A0: i248 = (position.amount) as i248;
+
+    let profit = (P - P0) * (A0) * (L);
+    let value = abs(P * (A0));
+    (profit, value)
+}
+
+fn versusDirection(originDir: i8) -> i8 {
+    if originDir == 1 {
+        -1
+    } else if originDir == -1 {
+        1 as i8
+    } else {
+        require(false, "Unsupport Position Direction");
+        0 as i8
+    }
+}
